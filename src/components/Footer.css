@@ -1,0 +1,15 @@
+/* src/components/Footer.css */
+
+.footer-principal {
+  background-color: #e1f7ca; /* El mismo azul oscuro */
+  color: #000000;         /* Un color de texto más suave */
+  height: 40px;            /* Un poco más bajo que el header */
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Para separar el texto de la fecha */
+  font-size: 13px;
+  
+  /* Esto "encoge" el footer para que no crezca */
+  flex-shrink: 0; 
+}
