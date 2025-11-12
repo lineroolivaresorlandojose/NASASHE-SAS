@@ -16,23 +16,46 @@ import TicketInventario from '../components/TicketInventario';
 import '../components/TicketCompra.css'; // Importa los estilos del ticket
 
 // Función para "revivir" las fechas de Firebase que mueren en JSON.stringify
-const revivirFechas = (key, value) => {
+//       const revivirFechas = (key, value) => {
   // Asumimos que tus fechas se guardan como objetos { seconds, nanoseconds }
-  if (typeof value === 'object' && value !== null && 'seconds' in value && 'nanoseconds' in value) {
-    return new Date(value.seconds * 1000 + value.nanoseconds / 1000000);
-  }
-  // O si ya se convirtieron a string ISO
-  if (key === 'fecha' && typeof value === 'string' && value.includes('T') && value.endsWith('Z')) {
-    return new Date(value);
-  }
-  return value;
+
+  const isTauriEnvironment = () => typeof window !== 'undefined' && Boolean(window.__TAURI__);
+
+  const revivirFechas = (key, value) => {
+    if (typeof value === 'object' && value !== null && 'seconds' in value && 'nanoseconds' in value) {
+      return new Date(value.seconds * 1000 + value.nanoseconds / 1000000);
+    }
+    // O si ya se convirtieron a string ISO
+    if (key === 'fecha' && typeof value === 'string' && value.includes('T') && value.endsWith('Z')) {
+      return new Date(value);
+    }
+    return value;
 };
 
 
-function PaginaImpresion() {
-  const [ticket, setTicket] = useState(null);
+//      function PaginaImpresion() {
+//         const [ticket, setTicket] = useState(null);
 
-  // 1. Cargar datos desde localStorage al iniciar
+  function PaginaImpresion() {
+    const [ticket, setTicket] = useState(null);
+
+    const closePrintWindow = async () => {
+      if (!isTauriEnvironment()) {
+        window.close();
+        return;
+      }
+
+      try {
+        const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+        const currentWindow = getCurrentWebviewWindow();
+        currentWindow.close();
+      } catch (error) {
+        console.error('No se pudo cerrar la ventana de impresión de Tauri:', error);
+        window.close();
+      }
+    };  
+
+  // 1. Cargar datos   desde localStorage al iniciar
   useEffect(() => {
     try {
       const dataString = localStorage.getItem('ticketData');
@@ -66,11 +89,23 @@ function PaginaImpresion() {
       const timer = setTimeout(() => {
         
         // 2.1. Escuchar el evento de "después de imprimir"
-        const handleAfterPrint = () => {
+          // const handleAfterPrint = () => {
           // appWindow.close(); // Cierra la ventana de Tauri
-          const currentWindow = getCurrentWebviewWindow();
-          currentWindow.close(); // Cierra la ventana de Tauri
-        };
+          // const currentWindow = getCurrentWebviewWindow();
+          // currentWindow.close(); // Cierra la ventana de Tauri
+
+          const handleAfterPrint = () => {
+            try {
+              if (window.__TAURI__) {
+                const currentWindow = getCurrentWebviewWindow();
+                currentWindow.close();
+              } else {
+                window.close();
+              }
+            } catch (error) {
+              console.warn('No se pudo cerrar la ventana de impresión automáticamente:', error);
+            }
+         };
         window.onafterprint = handleAfterPrint;
 
         // 2.2. Llamar a la impresión

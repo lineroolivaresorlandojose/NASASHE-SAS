@@ -17,6 +17,10 @@ import {
 import { useCaja } from '../context/CajaContext';
 import './PaginaCompras.css';
 import { generarTextoTicketCompra } from '../utils/generarTickets'; 
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+
+// ¡AÑADE ESTA LÍNEA! (Con la variable correcta de v2)
+const isTauriEnvironment = () => typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__);
 
 const formatConsecutivo = (num, prefix) => {
   return `${prefix}${String(num).padStart(5, '0')}`;
@@ -273,59 +277,71 @@ function PaginaCompras() {
   };
 
 
-  const handleImprimir = () => {
-    if (!compraReciente) return;
-    const textoTicket = generarTextoTicketCompra(compraReciente, userProfile); 
+  // Función de respaldo para imprimir en navegador
+  const printCompraEnNavegador = (compraData) => {
+    const textoTicket = generarTextoTicketCompra(compraData, userProfile);
     const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-      <html>
-        <head><title>Ticket ${compraReciente.consecutivo}</title>
-          <style>
-            body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; }
-            @page { margin: 2mm; size: 80mm auto; }
-          </style>
-        </head>
-        <body>
-          <pre>${textoTicket}</pre>
-          <script>
-            window.onload = () => {
-              window.print();
-              window.onafterprint = () => window.close();
-              window.onfocus = () => setTimeout(() => window.close(), 500);
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
 
-    const checkWindowClosed = setInterval(() => {
-      if (printWindow.closed) {
-        clearInterval(checkWindowClosed);
-        handleDescargarYLlimpiar();
-      }
-    }, 500);
+    if (!printWindow) {
+      alert('El navegador bloqueó la ventana emergente del ticket. Habilita las ventanas emergentes e inténtalo nuevamente.');
+      return;
+    }
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Ticket ${compraData.consecutivo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; margin: 0; padding: 8px; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
+    printWindow.document.close();
   };
-  
-  const handleRegistrarNueva = () => {
+
+  const handleImprimir = async () => {
     if (!compraReciente) return;
-    // ¡YA NO DESCARGA TXT! Solo limpia.
+
+    if (!isTauriEnvironment()) {
+      // --- Lógica de Navegador (la que tenías) ---
+      printCompraEnNavegador(compraReciente);
+      handleDescargarYLlimpiar(); // Descarga el TXT después de imprimir
+    } else {
+      // --- Lógica de Tauri (la nueva) ---
+      localStorage.setItem('ticketData', JSON.stringify(compraReciente));
+      localStorage.setItem('ticketUser', JSON.stringify(userProfile));
+      localStorage.setItem('ticketType', 'compra');
+      
+      const label = `ticket-compra-${compraReciente.consecutivo.replace(/\s/g, '-')}`;
+      const webview = new WebviewWindow(label, {
+        url: '/imprimir',
+        title: `Ticket ${compraReciente.consecutivo}`,
+        width: 310, 
+        height: 600,
+      });
+
+      webview.once('tauri://created', () => {
+        console.log('Ventana de impresión (compra) creada');
+        // Limpiamos el formulario una vez que la ventana se crea
+        handleRegistrarNueva();
+      });
+      webview.once('tauri://error', (e) => {
+        console.error('Error al crear ventana de impresión:', e);
+        // Fallback al método de navegador si Tauri falla
+        printCompraEnNavegador(compraReciente);
+        handleDescargarYLlimpiar();
+      });
+    }
+  };
+
+  // Función para limpiar el formulario
+  const handleRegistrarNueva = () => {
     setItemsCompra([]);
     setTotalCompra(0);
     setNombreReciclador('');
     setCompraReciente(null);
   };
 
+  // Función para descargar el TXT y luego limpiar
   const handleDescargarYLlimpiar = () => {
     if (!compraReciente) return;
     
     const textoTicket = generarTextoTicketCompra(compraReciente, userProfile);
     descargarTxt(textoTicket, compraReciente.consecutivo);
     
-    setItemsCompra([]);
-    setTotalCompra(0);
-    setNombreReciclador('');
-    setCompraReciente(null);
+    handleRegistrarNueva(); // Llama a la función que limpia
   };
   
 

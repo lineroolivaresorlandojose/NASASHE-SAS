@@ -48,7 +48,9 @@ import GraficaBarras from '../components/GraficaBarras';
 // ¡AÑADE ESTA LÍNEA!
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';                                                                                                                     
 
-const isTauriEnvironment = () => typeof window !== 'undefined' && Boolean(window.__TAURI__);
+//                                                const isTauriEnvironment = () => typeof window !== 'undefined' && Boolean(window.__TAURI__);
+
+const isTauriEnvironment = () => typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__);
 
 // --- ¡PASO 1: IMPORTAR EL COMPONENTE! ---
 // import TicketCompra from '../components/TicketCompra'; // (Ajusta la ruta si es necesario) //
