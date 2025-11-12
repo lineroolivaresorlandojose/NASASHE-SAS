@@ -12,6 +12,8 @@ import { useCaja } from '../context/CajaContext';
 import './PaginaGastos.css'; // ¡Importamos el nuevo CSS!
 // ¡Importamos la NUEVA función de ticket!
 import { generarTextoTicketGasto } from '../utils/generarTickets'; 
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+const isTauriEnvironment = () => typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__);
 
 const formatConsecutivo = (num, prefix) => {
   return `${prefix}${String(num).padStart(5, '0')}`;
@@ -174,52 +176,60 @@ function PaginaGastos() {
   };
 
 
-  // --- Lógica de Impresión/Descarga ---
-  const handleImprimir = () => {
-    if (!gastoReciente) return;
-    const textoTicket = generarTextoTicketGasto(gastoReciente, userProfile);
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-      <html>
-        <head><title>Comprobante ${gastoReciente.consecutivo}</title>
-          <style>
-            body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; }
-            @page { margin: 2mm; size: 80mm auto; }
-          </style>
-        </head>
-        <body>
-          <pre>${textoTicket}</pre>
-          <script>
-            window.onload = () => {
-              window.print();
-              window.onafterprint = () => window.close();
-              window.onfocus = () => setTimeout(() => window.close(), 500);
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+  // --- Lógica de Impresión/Descarga (¡ACTUALIZADA!) ---
 
-    const checkWindowClosed = setInterval(() => {
-      if (printWindow.closed) {
-        clearInterval(checkWindowClosed);
-        handleDescargarYLlimpiar();
-      }
-    }, 500);
+  const printGastoEnNavegador = (gastoData) => {
+    const textoTicket = generarTextoTicketGasto(gastoData, userProfile);
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('El navegador bloqueó la ventana emergente del ticket.');
+      return;
+    }
+    printWindow.document.write(`<html><head><title>Comprobante ${gastoData.consecutivo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
+    printWindow.document.close();
   };
-  
+
+  const handleImprimir = async () => {
+    if (!gastoReciente) return;
+
+    if (!isTauriEnvironment()) {
+      printGastoEnNavegador(gastoReciente);
+      handleDescargarYLlimpiar();
+    } else {
+      localStorage.setItem('ticketData', JSON.stringify(gastoReciente));
+      localStorage.setItem('ticketUser', JSON.stringify(userProfile));
+      localStorage.setItem('ticketType', 'gasto'); // <-- Tipo 'gasto'
+
+      const label = `ticket-gasto-${gastoReciente.consecutivo.replace(/\s/g, '-')}`;
+      const webview = new WebviewWindow(label, {
+        url: '/imprimir',
+        title: `Comprobante ${gastoReciente.consecutivo}`,
+        width: 310, 
+        height: 600,
+      });
+
+      webview.once('tauri://created', () => {
+        handleRegistrarNuevoGasto();
+      });
+      webview.once('tauri://error', (e) => {
+        console.error('Error al crear ventana de impresión:', e);
+        printGastoEnNavegador(gastoReciente);
+        handleDescargarYLlimpiar();
+      });
+    }
+  };
+
   const handleRegistrarNuevoGasto = () => {
     if (!gastoReciente) return;
     handleDescargarYLlimpiar();
   };
 
   const handleDescargarYLlimpiar = () => {
-    if (!gastoReciente) return;
-    
-    const textoTicket = generarTextoTicketGasto(gastoReciente, userProfile);
-    descargarTxt(textoTicket, gastoReciente.consecutivo);
-    
+    if (gastoReciente && !isTauriEnvironment()) {
+      const textoTicket = generarTextoTicketGasto(gastoReciente, userProfile);
+      descargarTxt(textoTicket, gastoReciente.consecutivo);
+    }
+
     setDescripcion('');
     setMonto('');
     setGastoReciente(null);

@@ -2,6 +2,7 @@
 
 //        import React, { useState, useRef } from 'react';
 import React, { useState, useRef } from 'react';
+// import { WebviewWindow } from '@tauri-apps/api/window';
 import { db } from '../firebase';
 import { 
   collection, 
@@ -24,6 +25,7 @@ import {
 
 import { useCaja } from '../context/CajaContext';
 import './PaginaReportes.css';
+
 
 import {
   generarTextoTicketCompra,
@@ -90,6 +92,8 @@ const TicketInventario = React.forwardRef(({ inventario }, ref) => {
 // Función de TXT de inventario
 //          const generarTextoTicketInventario = (inventario, usuario) => {
 
+
+  
 // Función de TXT de inventario
 const generarTextoTicketInventario = (inventario, usuario) => {
   const fecha = new Date().toLocaleString('es-CO');
@@ -118,7 +122,30 @@ const generarTextoTicketInventario = (inventario, usuario) => {
 };
 // ... (Fin del código de inventario)
 
+const prepararEImprimir = async (tipo, datos, usuario) => {
+  // Paso 1: Guardar todo en el "buzón" (localStorage)
+  try {
+    localStorage.setItem('ticketData', JSON.stringify(datos));
+    localStorage.setItem('ticketUser', JSON.stringify(usuario));
+    localStorage.setItem('ticketType', tipo); // 'compra', 'inventario', 'venta', etc.
+  } catch (error) {
+    console.error("Error al guardar datos en localStorage:", error);
+    alert("Error al preparar la impresión.");
+    return;
+  }
 
+  // Paso 2: Tocar el timbre (Abrir la ventana de impresión)
+  const printLabel = `print_${Date.now()}`;
+  const webview = new WebviewWindow(printLabel, {
+    url: '/impresion', // La RUTA de React para PaginaImpresion.jsx
+    title: 'Imprimiendo Ticket...',
+    visible: false,
+    width: 800,
+    height: 600,
+  });
+
+  await webview.create();
+};
 
 function PaginaReportes() {
   const { base, userProfile } = useCaja();
@@ -158,7 +185,9 @@ function PaginaReportes() {
   // --- Estado Análisis ---
   const [analisisData, setAnalisisData] = useState(null);
 
-  
+
+
+
   // --- ¡PASO 2: AÑADIR ESTADO Y USEEFFECT! ---
   // const [ticketParaImprimir, setTicketParaImprimir] = useState(null); //
 
@@ -277,6 +306,9 @@ function PaginaReportes() {
     setLoading(false);
   };
 
+
+
+
   // --- Funciones de Re-impresión ---
 
 /*          // ¡ESTA ES LA NUEVA VERSIÓN!
@@ -318,7 +350,7 @@ function PaginaReportes() {
 
 
 
-  const printCompraEnNavegador = (compraData) => {
+  /* const printCompraEnNavegador = (compraData) => {
     const textoTicket = generarTextoTicketCompra(compraData, userProfile);
     const printWindow = window.open('', '_blank');
 
@@ -329,6 +361,35 @@ function PaginaReportes() {
 
     printWindow.document.write(`<!DOCTYPE html><html><head><title>Ticket ${compraData.consecutivo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; margin: 0; padding: 8px; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
     printWindow.document.close();
+  }; */
+
+
+  const printCompraEnNavegador = (compraData, userProfile) => {
+    // 1. Generas tu texto HTML como ya lo hacías
+    const textoTicket = generarTextoTicketCompra(compraData, userProfile);
+  
+    // 2. Creas un "iframe" (una ventana interna) invisible
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+  
+    // 3. Escribes tu HTML dentro de ese iframe
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(textoTicket); // Aquí pones tu HTML
+    doc.close();
+  
+    // 4. Mandas a imprimir el contenido SÓLO del iframe
+    iframe.contentWindow.focus(); // Necesario para que funcione
+    iframe.contentWindow.print();
+  
+    // 5. (Opcional) Limpias y eliminas el iframe después de un segundo
+    setTimeout(() => {
+      document.body.removeChild(iframe);
+    }, 1000);
   };
 
   const handleReimprimirCompra = async (compra) => {
@@ -365,7 +426,7 @@ function PaginaReportes() {
     });
     webview.once('tauri://error', function (e) {
       console.error('Error al crear ventana de impresión:', e);
-      alert('Error al abrir la ventana de impresión. ¿Reiniciaste la app (npm run tauri dev) después de cambiar los permisos?');
+//      alert('Error al abrir la ventana de impresión. ¿Reiniciaste la app (npm run tauri dev) después de cambiar los permisos?');
       printCompraEnNavegador(compra);
     });
     
@@ -373,27 +434,88 @@ function PaginaReportes() {
 
 
 
-  // (Estas funciones seguirán fallando hasta que las actualicemos)
-  const handleReimprimirVenta = (venta) => {
+  // ¡REEMPLAZA ESTA FUNCIÓN!
+  const handleReimprimirVenta = async (venta) => {
     if (!venta) return;
-    const textoTicket = generarTextoTicketVenta(venta, userProfile); 
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`<html><head><title>Ticket ${venta.consecutivo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
-    printWindow.document.close();
+
+    if (!isTauriEnvironment()) {
+      // Fallback para navegador
+      const textoTicket = generarTextoTicketVenta(venta, userProfile); 
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`<html><head><title>Ticket ${venta.consecutivo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
+      printWindow.document.close();
+      return;
+    }
+
+    // Lógica de Tauri
+    localStorage.setItem('ticketData', JSON.stringify(venta));
+    localStorage.setItem('ticketUser', JSON.stringify(userProfile));
+    localStorage.setItem('ticketType', 'venta'); // <-- Tipo 'venta'
+    
+    const label = `ticket-venta-${venta.consecutivo.replace(/\s/g, '-')}`;
+    const webview = new WebviewWindow(label, {
+      url: '/imprimir',
+      title: `Ticket ${venta.consecutivo}`,
+      width: 310, 
+      height: 600,
+    });
+    webview.once('tauri://error', (e) => console.error(e));
   };
-  const handleReimprimirVentaMenor = (venta) => {
+
+  // ¡REEMPLAZA ESTA FUNCIÓN!
+  const handleReimprimirVentaMenor = async (venta) => {
     if (!venta) return;
-    const textoTicket = generarTextoTicketVentaMenor(venta, userProfile); 
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`<html><head><title>Ticket ${venta.consecutivo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
-    printWindow.document.close();
+
+    if (!isTauriEnvironment()) {
+      // Fallback para navegador
+      const textoTicket = generarTextoTicketVentaMenor(venta, userProfile); 
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`<html><head><title>Ticket ${venta.consecutivo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
+      printWindow.document.close();
+      return;
+    }
+
+    // Lógica de Tauri
+    localStorage.setItem('ticketData', JSON.stringify(venta));
+    localStorage.setItem('ticketUser', JSON.stringify(userProfile));
+    localStorage.setItem('ticketType', 'ventaMenor'); // <-- Tipo 'ventaMenor'
+    
+    const label = `ticket-venta-menor-${venta.consecutivo.replace(/\s/g, '-')}`;
+    const webview = new WebviewWindow(label, {
+      url: '/imprimir',
+      title: `Ticket ${venta.consecutivo}`,
+      width: 310, 
+      height: 600,
+    });
+    webview.once('tauri://error', (e) => console.error(e));
   };
-  const handleReimprimirGasto = (gasto) => {
+
+  // ¡REEMPLAZA ESTA FUNCIÓN!
+  const handleReimprimirGasto = async (gasto) => {
     if (!gasto) return;
-    const textoTicket = generarTextoTicketGasto(gasto, userProfile); 
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`<html><head><title>Comprobante ${gasto.consecutivo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
-    printWindow.document.close();
+
+    if (!isTauriEnvironment()) {
+      // Fallback para navegador
+      const textoTicket = generarTextoTicketGasto(gasto, userProfile); 
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`<html><head><title>Comprobante ${gasto.consecutivo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
+      printWindow.document.close();
+      return;
+    }
+
+    // Lógica de Tauri
+    localStorage.setItem('ticketData', JSON.stringify(gasto));
+    localStorage.setItem('ticketUser', JSON.stringify(userProfile));
+    localStorage.setItem('ticketType', 'gasto'); // <-- Tipo 'gasto'
+    
+    const label = `ticket-gasto-${gasto.consecutivo.replace(/\s/g, '-')}`;
+    const webview = new WebviewWindow(label, {
+      url: '/imprimir',
+      title: `Comprobante ${gasto.consecutivo}`,
+      width: 310, 
+      height: 600,
+    });
+    webview.once('tauri://error', (e) => console.error(e));
   };
   // --- FIN DE LA MODIFICACIÓN ---
 
@@ -650,7 +772,7 @@ function PaginaReportes() {
                       <td>${compra.total.toLocaleString('es-CO')}</td>
                       <td>
                         {/* ¡Este botón ahora usa la nueva función! */}
-                        <button onClick={() => handleReimprimirCompra(compra)} className="btn-reimprimir">
+                        <button onClick={() => prepararEImprimir(compra)} className="btn-reimprimir">
                           Re-imprimir
                         </button>
                       </td>
@@ -697,7 +819,7 @@ function PaginaReportes() {
                       <td>{venta.proveedor.nombre}</td>
                       <td>${venta.total.toLocaleString('es-CO')}</td>
                       <td>
-                        <button onClick={() => handleReimprimirVenta(venta)} className="btn-reimprimir">
+                        <button onClick={() => prepararEImprimir(venta)} className="btn-reimprimir">
                           Re-imprimir
                         </button>
                       </td>
@@ -744,7 +866,7 @@ function PaginaReportes() {
                       <td>{venta.cliente}</td>
                       <td>${venta.total.toLocaleString('es-CO')}</td>
                       <td>
-                        <button onClick={() => handleReimprimirVentaMenor(venta)} className="btn-reimprimir">
+                        <button onClick={() => prepararEImprimir(venta)} className="btn-reimprimir">
                           Re-imprimir
                         </button>
                       </td>
@@ -793,7 +915,7 @@ function PaginaReportes() {
                       <td>{gasto.descripcion}</td>
                       <td>${gasto.monto.toLocaleString('es-CO')}</td>
                       <td>
-                        <button onClick={() => handleReimprimirGasto(gasto)} className="btn-reimprimir">
+                        <button onClick={() => prepararEImprimir(gasto)} className="btn-reimprimir">
                           Re-imprimir
                         </button>
                       </td>
@@ -823,11 +945,11 @@ function PaginaReportes() {
                   Exportar a PDF
                 </button>
                 <button 
-                  onClick={handleImprimirInventario} 
+                  onClick={prepararEImprimir} 
                   className="btn-imprimir-inventario"
                   disabled={inventario.length === 0}
                 >
-                  Imprimir (8cm)
+                  Imprimir
                 </button>
               </div>
             </div>

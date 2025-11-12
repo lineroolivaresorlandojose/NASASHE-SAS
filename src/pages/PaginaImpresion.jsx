@@ -19,7 +19,7 @@ import '../components/TicketCompra.css'; // Importa los estilos del ticket
 //       const revivirFechas = (key, value) => {
   // Asumimos que tus fechas se guardan como objetos { seconds, nanoseconds }
 
-  const isTauriEnvironment = () => typeof window !== 'undefined' && Boolean(window.__TAURI__);
+  const isTauriEnvironment = () => typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__);
 
   const revivirFechas = (key, value) => {
     if (typeof value === 'object' && value !== null && 'seconds' in value && 'nanoseconds' in value) {

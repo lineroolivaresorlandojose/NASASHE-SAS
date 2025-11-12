@@ -14,6 +14,8 @@ import { useCaja } from '../context/CajaContext';
 import './PaginaVentas.css'; // ¡CSS de Ventas!
 // ¡Importamos la NUEVA función de ticket!
 import { generarTextoTicketVenta } from '../utils/generarTickets'; 
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+const isTauriEnvironment = () => typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__);
 
 const formatConsecutivo = (num, prefix) => {
   return `${prefix}${String(num).padStart(5, '0')}`;
@@ -213,58 +215,66 @@ function PaginaVentas() {
     setIsSubmitting(false);
   };
 
-  // --- Lógica de Impresión/Descarga ---
-  const handleImprimir = () => {
-    if (!ventaReciente) return;
-    const textoTicket = generarTextoTicketVenta(ventaReciente, userProfile);
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-      <html>
-        <head><title>Ticket ${ventaReciente.consecutivo}</title>
-          <style>
-            body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; }
-            @page { margin: 2mm; size: 80mm auto; }
-          </style>
-        </head>
-        <body>
-          <pre>${textoTicket}</pre>
-          <script>
-            window.onload = () => {
-              window.print();
-              window.onafterprint = () => window.close();
-              window.onfocus = () => setTimeout(() => window.close(), 500);
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+  // --- Lógica de Impresión/Descarga (¡ACTUALIZADA!) ---
 
-    const checkWindowClosed = setInterval(() => {
-      if (printWindow.closed) {
-        clearInterval(checkWindowClosed);
-        handleDescargarYLlimpiar();
-      }
-    }, 500);
+  const printVentaEnNavegador = (ventaData) => {
+    const textoTicket = generarTextoTicketVenta(ventaData, userProfile);
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('El navegador bloqueó la ventana emergente del ticket.');
+      return;
+    }
+    printWindow.document.write(`<html><head><title>Ticket ${ventaData.consecutivo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
+    printWindow.document.close();
   };
-  
-  const handleRegistrarNuevaVenta = () => {
+
+  const handleImprimir = async () => {
     if (!ventaReciente) return;
-    handleDescargarYLlimpiar();
+
+    if (!isTauriEnvironment()) {
+      printVentaEnNavegador(ventaReciente);
+      handleDescargarYLlimpiar();
+    } else {
+      localStorage.setItem('ticketData', JSON.stringify(ventaReciente));
+      localStorage.setItem('ticketUser', JSON.stringify(userProfile));
+      localStorage.setItem('ticketType', 'venta'); // <-- Tipo 'venta'
+
+      const label = `ticket-venta-${ventaReciente.consecutivo.replace(/\s/g, '-')}`;
+      const webview = new WebviewWindow(label, {
+        url: '/imprimir',
+        title: `Ticket ${ventaReciente.consecutivo}`,
+        width: 310, 
+        height: 600,
+      });
+
+      webview.once('tauri://created', () => {
+        handleRegistrarNuevaVenta();
+      });
+      webview.once('tauri://error', (e) => {
+        console.error('Error al crear ventana de impresión:', e);
+        printVentaEnNavegador(ventaReciente);
+        handleDescargarYLlimpiar();
+      });
+    }
+  };
+
+  const handleRegistrarNuevaVenta = () => {
+    if (!ventaReciente && itemsVenta.length === 0) return;
+    handleDescargarYLlimpiar(); // Llama a la función que limpia y descarga
   };
 
   const handleDescargarYLlimpiar = () => {
-    if (!ventaReciente) return;
-    
-    const textoTicket = generarTextoTicketVenta(ventaReciente, userProfile);
-    descargarTxt(textoTicket, ventaReciente.consecutivo);
-    
+    if (ventaReciente && !isTauriEnvironment()) { // Solo descarga TXT en navegador
+      const textoTicket = generarTextoTicketVenta(ventaReciente, userProfile);
+      descargarTxt(textoTicket, ventaReciente.consecutivo);
+    }
+
     setItemsVenta([]);
     setTotalVenta(0);
     setProveedorSeleccionadoId('');
     setVentaReciente(null);
   };
-  
+    
 
   if (loading) {
     return <p>Cargando datos maestros...</p>;
