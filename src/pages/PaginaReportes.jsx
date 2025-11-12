@@ -52,7 +52,8 @@ import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 
 //                                                const isTauriEnvironment = () => typeof window !== 'undefined' && Boolean(window.__TAURI__);
 
-const isTauriEnvironment = () => typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__);
+const isTauriEnvironment = () =>
+  typeof window !== 'undefined' && (Boolean(window.__TAURI__) || Boolean(window.__TAURI_INTERNALS__));
 
 // --- ¡PASO 1: IMPORTAR EL COMPONENTE! ---
 // import TicketCompra from '../components/TicketCompra'; // (Ajusta la ruta si es necesario) //
@@ -121,31 +122,6 @@ const generarTextoTicketInventario = (inventario, usuario) => {
   return contenido;
 };
 // ... (Fin del código de inventario)
-
-const prepararEImprimir = async (tipo, datos, usuario) => {
-  // Paso 1: Guardar todo en el "buzón" (localStorage)
-  try {
-    localStorage.setItem('ticketData', JSON.stringify(datos));
-    localStorage.setItem('ticketUser', JSON.stringify(usuario));
-    localStorage.setItem('ticketType', tipo); // 'compra', 'inventario', 'venta', etc.
-  } catch (error) {
-    console.error("Error al guardar datos en localStorage:", error);
-    alert("Error al preparar la impresión.");
-    return;
-  }
-
-  // Paso 2: Tocar el timbre (Abrir la ventana de impresión)
-  const printLabel = `print_${Date.now()}`;
-  const webview = new WebviewWindow(printLabel, {
-    url: '/imprimir', // La RUTA de React para PaginaImpresion.jsx
-    title: 'Imprimiendo Ticket...',
-    visible: true,
-    width: 2000,
-    height: 600,
-  });
-
-  await webview.create();
-};
 
 function PaginaReportes() {
   const { base, userProfile } = useCaja();
@@ -348,8 +324,6 @@ function PaginaReportes() {
 
 
 
-
-
   /* const printCompraEnNavegador = (compraData) => {
     const textoTicket = generarTextoTicketCompra(compraData, userProfile);
     const printWindow = window.open('', '_blank');
@@ -358,7 +332,6 @@ function PaginaReportes() {
       alert('El navegador bloqueó la ventana emergente del ticket. Habilita las ventanas emergentes e inténtalo nuevamente.');
       return;
     }
-
     printWindow.document.write(`<!DOCTYPE html><html><head><title>Ticket ${compraData.consecutivo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; margin: 0; padding: 8px; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
     printWindow.document.close();
   }; */
@@ -426,6 +399,8 @@ function PaginaReportes() {
           return printVentaMenorEnNavegador(datos);
         case 'gasto':
           return printGastoEnNavegador(datos);
+        case 'inventario':
+          return printInventarioEnNavegador(datos);
         default:
           console.warn(`Tipo de ticket no soportado para impresión en navegador: ${tipo}`);
       }
@@ -456,6 +431,8 @@ function PaginaReportes() {
 
     if (tipo === 'gasto') {
       tituloVentana = `Comprobante ${datos.consecutivo || ''}`.trim();
+    } else if (tipo === 'inventario') {
+      tituloVentana = 'Reporte de Inventario';
     } else if (datos.consecutivo) {
       tituloVentana = `Ticket ${datos.consecutivo}`;
     }
@@ -493,18 +470,23 @@ function PaginaReportes() {
     } catch (error) { console.error("Error al cargar inventario: ", error); alert("Error al cargar inventario."); }
     setLoadingInventario(false);
   };
-  
+
   const handleExportarPDF = () => {
-    // ... (tu código sigue igual)
-    if (inventario.length === 0) { alert("No hay datos de inventario para exportar."); return; }
+    if (inventario.length === 0) {
+      alert("No hay datos de inventario para exportar.");
+      return;
+    }
+
     const doc = new jsPDF();
     doc.text("Reporte de Inventario Actual", 14, 15);
     doc.setFontSize(10);
     doc.text(`Generado por: ${userProfile?.nombre || 'SISTEMA'}`, 14, 20);
     doc.text(`Fecha: ${new Date().toLocaleDateString('es-CO')}`, 14, 25);
+
     const tableColumn = ["Nombre", "Precio Compra ($)", "Stock Actual (kg/und)"];
     const tableRows = [];
-    inventario.forEach(item => {
+
+    inventario.forEach((item) => {
       const precioCompra = Number(item?.precioCompra ?? 0);
       const stockActual = Number(item?.stock ?? 0);
       const itemData = [
@@ -514,24 +496,63 @@ function PaginaReportes() {
       ];
       tableRows.push(itemData);
     });
+
     autoTable(doc, { head: [tableColumn], body: tableRows, startY: 30 });
+
     const fechaHoy = new Date().toISOString().split('T')[0];
-    doc.save(`Reporte_Inventario_${fechaHoy}.pdf`);
+
+    try {
+      doc.save(`Reporte_Inventario_${fechaHoy}.pdf`);
+      alert('Su archivo se exportó con éxito en la carpeta de descargas.');
+    } catch (error) {
+      console.error('Error al exportar el inventario a PDF:', error);
+      alert('Ocurrió un error al exportar el PDF. Por favor, inténtalo de nuevo.');
+    }
   };
 
+  const printInventarioEnNavegador = (payload) => {
+    const itemsParaImprimir = Array.isArray(payload?.items) && payload.items.length > 0
+      ? payload.items
+      : inventario;
 
-  // ¡AÑADE ESTA FUNCIÓN NUEVA AQUÍ!
-  const printInventarioEnNavegador = () => {
-    const textoTicket = generarTextoTicketInventario(inventario, userProfile);
-    const printWindow = window.open('', '_blank');
-
-    if (!printWindow) {
-      alert('El navegador bloqueó la ventana emergente del ticket. Habilita las ventanas emergentes e inténtalo nuevamente.');
+    if (!itemsParaImprimir || itemsParaImprimir.length === 0) {
+      alert('No hay datos de inventario para imprimir.');
       return;
     }
 
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Reporte Inventario</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; margin: 0; padding: 8px; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
-    printWindow.document.close();
+    const textoTicket = generarTextoTicketInventario(itemsParaImprimir, userProfile);
+    const htmlTicket = `<!DOCTYPE html><html><head><title>Reporte Inventario</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; margin: 0; padding: 8px; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre></body></html>`;
+
+    const printFrame = document.createElement('iframe');
+    printFrame.style.position = 'fixed';
+    printFrame.style.right = '0';
+    printFrame.style.bottom = '0';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    printFrame.style.border = '0';
+    document.body.appendChild(printFrame);
+
+    const handleAfterPrint = () => {
+      setTimeout(() => {
+        if (printFrame.parentNode) {
+          printFrame.parentNode.removeChild(printFrame);
+        }
+      }, 500);
+    };
+
+    printFrame.onload = () => {
+      const frameWindow = printFrame.contentWindow;
+      if (frameWindow) {
+        frameWindow.focus();
+        frameWindow.print();
+        frameWindow.onafterprint = handleAfterPrint;
+        setTimeout(handleAfterPrint, 5000);
+      } else {
+        handleAfterPrint();
+      }
+    };
+
+    printFrame.srcdoc = htmlTicket;
   };
 
   
@@ -553,15 +574,9 @@ function PaginaReportes() {
 
   //};
 
-
-  const handleImprimirInventario = () => {
+  const handleImprimirInventario = async () => {
     if (inventario.length === 0) {
       alert('No hay datos de inventario para imprimir.');
-      return;
-    }
-
-    if (!isTauriEnvironment()) {
-      printInventarioEnNavegador();
       return;
     }
 
@@ -575,31 +590,13 @@ function PaginaReportes() {
       fechaGeneracion: new Date().toISOString(),
     };
 
-    localStorage.setItem('ticketData', JSON.stringify(ticketPayload));
-    localStorage.setItem('ticketUser', JSON.stringify(userProfile));
-    localStorage.setItem('ticketType', 'inventario');
-
-    const label = `ticket-inventario-${Date.now()}`;
-
-    const webview = new WebviewWindow(label, {
-      url: '/imprimir',
-      title: 'Reporte de Inventario',
-      width: 310,
-      height: 600,
-      resizable: true,
-      decorations: true,
-    });
-
-    webview.once('tauri://created', function () {
-      console.log('Ventana de impresión de inventario creada');
-    });
-    webview.once('tauri://error', function (e) {
-      console.error('Error al crear ventana de impresión de inventario:', e);
-      alert('Error al abrir la ventana de impresión de inventario. ¿Reiniciaste la app (npm run tauri dev) después de cambiar los permisos?');
-      printInventarioEnNavegador();
-    });
+    try {
+      await prepararEImprimir('inventario', ticketPayload);
+    } catch (error) {
+      console.error('Error al preparar la impresión del inventario:', error);
+      printInventarioEnNavegador(ticketPayload);
+    }
   };
-
 
   // --- Función de Análisis ---
   const handleGenerateAnalisis = async () => {
