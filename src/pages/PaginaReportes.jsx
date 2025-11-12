@@ -1,6 +1,7 @@
 // src/pages/PaginaReportes.jsx
 
-import React, { useState, useEffect, useRef } from 'react'; 
+//        import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { db } from '../firebase';
 import { 
   collection, 
@@ -10,23 +11,44 @@ import {
   Timestamp,
   orderBy
 } from 'firebase/firestore';
+//        import { useCaja } from '../context/CajaContext';
+//        import './PaginaReportes.css';
+
+//        ¡YA NO USAMOS 'generarTextoTicketCompra'!
+//        import { 
+  //        generarTextoTicketCompra, (La quitamos)
+//          generarTextoTicketVenta,
+//          generarTextoTicketVentaMenor,
+//          generarTextoTicketGasto 
+//}         from '../utils/generarTickets'; 
+
 import { useCaja } from '../context/CajaContext';
 import './PaginaReportes.css';
 
-// ¡YA NO USAMOS 'generarTextoTicketCompra'!
-import { 
-  // generarTextoTicketCompra, (La quitamos)
+import {
+  generarTextoTicketCompra,
   generarTextoTicketVenta,
   generarTextoTicketVentaMenor,
-  generarTextoTicketGasto 
-} from '../utils/generarTickets'; 
+  generarTextoTicketGasto
+} from '../utils/generarTickets';
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import GraficaBarras from '../components/GraficaBarras';
-import { useReactToPrint } from 'react-to-print';
+
+//
+// --- CÓDIGO ANTIGUO COMENTADO (useReactToPrint) ---
+//                         import { useReactToPrint } from 'react-to-print';
+//
+
+// ¡AÑADE ESTA LÍNEA! (Y CORRIGE LA RUTA)
+// Se cambió de '@tauri-apps/api/window' a '@tauri-apps/api/webviewWindow'
+//                        import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+
 // ¡AÑADE ESTA LÍNEA!
-import { WebviewWindow } from '@tauri-apps/api/window';
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow';                                                                                                                     
+
+const isTauriEnvironment = () => typeof window !== 'undefined' && Boolean(window.__TAURI__);
 
 // --- ¡PASO 1: IMPORTAR EL COMPONENTE! ---
 // import TicketCompra from '../components/TicketCompra'; // (Ajusta la ruta si es necesario) //
@@ -38,7 +60,9 @@ const parseDateString = (dateString) => {
   return new Date(parts[0], parts[1] - 1, parts[2]); 
 };
 
-// ... (El resto de tu código 'TicketInventario' y 'generarTextoTicketInventario' sigue igual)
+
+/* // --- CÓDIGO ANTIGUO COMENTADO (TicketInventario y generarTextoTicketInventario) ---
+
 // Componente de Ticket de Inventario (para imprimir 8cm)
 const TicketInventario = React.forwardRef(({ inventario }, ref) => {
   if (!inventario || inventario.length === 0) return null;
@@ -59,7 +83,10 @@ const TicketInventario = React.forwardRef(({ inventario }, ref) => {
       <div className="ticket-footer"><p>Total de {inventario.length} artículos.</p></div>
     </div>
   );
-});
+}); */
+
+// Función de TXT de inventario
+//          const generarTextoTicketInventario = (inventario, usuario) => {
 
 // Función de TXT de inventario
 const generarTextoTicketInventario = (inventario, usuario) => {
@@ -90,6 +117,7 @@ const generarTextoTicketInventario = (inventario, usuario) => {
 // ... (Fin del código de inventario)
 
 
+
 function PaginaReportes() {
   const { base, userProfile } = useCaja();
   
@@ -114,11 +142,16 @@ function PaginaReportes() {
   const [inventario, setInventario] = useState([]);
   const [loadingInventario, setLoadingInventario] = useState(false);
   
+  //
+  // --- CÓDIGO ANTIGUO COMENTADO (Lógica de Impresión Inventario) ---
+  //                                 const inventarioPrintRef = useRef(null);
+  //                                 const handlePrintInventario = useReactToPrint({
+  //                                 content: () => inventarioPrintRef.current,
+  //                                });
+  
+
   // --- Lógica de Impresión Inventario ---
   const inventarioPrintRef = useRef(null);
-  const handlePrintInventario = useReactToPrint({
-    content: () => inventarioPrintRef.current,
-  });
 
   // --- Estado Análisis ---
   const [analisisData, setAnalisisData] = useState(null);
@@ -127,17 +160,17 @@ function PaginaReportes() {
   // --- ¡PASO 2: AÑADIR ESTADO Y USEEFFECT! ---
   // const [ticketParaImprimir, setTicketParaImprimir] = useState(null); //
 
- // useEffect(() => {
- //   if (ticketParaImprimir) {
- //     // Retraso breve para asegurar que React renderizó el ticket
- //     const timer = setTimeout(() => {
- //       window.print(); // Llama a la impresión
- //       setTicketParaImprimir(null); // Limpia el estado después de imprimir
- //     }, 50); 
- //     
- //     return () => clearTimeout(timer); // Limpieza
- //    }
- // }, [ticketParaImprimir]); // Se ejecuta cada vez que 'ticketParaImprimir' cambia
+  // useEffect(() => {
+  //   if (ticketParaImprimir) {
+  //     // Retraso breve para asegurar que React renderizó el ticket
+  //     const timer = setTimeout(() => {
+  //       window.print(); // Llama a la impresión
+  //       setTicketParaImprimir(null); // Limpia el estado después de imprimir
+  //     }, 50); 
+  //     
+  //     return () => clearTimeout(timer); // Limpieza
+  //     }
+  // }, [ticketParaImprimir]); // Se ejecuta cada vez que 'ticketParaImprimir' cambia
   // --- FIN DEL PASO 2 ---
 
   
@@ -244,9 +277,65 @@ function PaginaReportes() {
 
   // --- Funciones de Re-impresión ---
 
-  // ¡ESTA ES LA NUEVA VERSIÓN!
+/*          // ¡ESTA ES LA NUEVA VERSIÓN!
+          const handleReimprimirCompra = async (compra) => {
+            if (!compra) return;
+
+            // 1. Guardar los datos en localStorage (la nueva ventana leerá esto)
+            //    JSON.stringify convierte el objeto en texto
+            localStorage.setItem('ticketData', JSON.stringify(compra));
+            localStorage.setItem('ticketUser', JSON.stringify(userProfile));
+            localStorage.setItem('ticketType', 'compra'); // Le dice a la ventana qué ticket mostrar
+
+            // 2. Crear una etiqueta única para la ventana
+            //    (Esto evita que se abran 10 ventanas si el usuario hace clic rápido)
+            const label = `ticket-compra-${compra.consecutivo.replace(/\s/g, '-')}`;
+
+            // 3. Crear la ventana de Tauri
+            const webview = new WebviewWindow(label, {
+              url: '/imprimir', // La ruta que creamos en App.jsx
+              title: `Ticket ${compra.consecutivo}`,
+              width: 310, // Ancho de 80mm (aprox 302px) + márgenes
+              height: 600,
+              resizable: true,
+              decorations: true, // Que tenga la barra de título
+            });
+
+            // 4. Manejar eventos
+            webview.once('tauri://created', function () {
+              console.log('Ventana de impresión creada');
+            });
+            webview.once('tauri://error', function (e) {
+              console.error('Error al crear ventana de impresión:', e);
+              alert('Error al abrir la ventana de impresión. ¿Reiniciaste la app (npm run tauri dev) después de cambiar los permisos?');
+            });
+            
+          }; */
+
+
+
+
+
+  const printCompraEnNavegador = (compraData) => {
+    const textoTicket = generarTextoTicketCompra(compraData, userProfile);
+    const printWindow = window.open('', '_blank');
+
+    if (!printWindow) {
+      alert('El navegador bloqueó la ventana emergente del ticket. Habilita las ventanas emergentes e inténtalo nuevamente.');
+      return;
+    }
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Ticket ${compraData.consecutivo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; margin: 0; padding: 8px; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
+    printWindow.document.close();
+  };
+
   const handleReimprimirCompra = async (compra) => {
     if (!compra) return;
+
+    if (!isTauriEnvironment()) {
+      printCompraEnNavegador(compra);
+      return;
+    }
 
     // 1. Guardar los datos en localStorage (la nueva ventana leerá esto)
     //    JSON.stringify convierte el objeto en texto
@@ -275,9 +364,12 @@ function PaginaReportes() {
     webview.once('tauri://error', function (e) {
       console.error('Error al crear ventana de impresión:', e);
       alert('Error al abrir la ventana de impresión. ¿Reiniciaste la app (npm run tauri dev) después de cambiar los permisos?');
+      printCompraEnNavegador(compra);
     });
     
   };
+
+
 
   // (Estas funciones seguirán fallando hasta que las actualicemos)
   const handleReimprimirVenta = (venta) => {
@@ -337,13 +429,70 @@ function PaginaReportes() {
   };
 
   // (Esta función de inventario seguirá fallando hasta que la actualicemos)
-  const handleImprimirInventario = () => {
-    if (inventario.length === 0) { alert("No hay datos de inventario para imprimir."); return; }
+  //            const handleImprimirInventario = () => {
+  //               if (inventario.length === 0) { alert("No hay datos de inventario para imprimir."); return; }
+    
+    /* // --- CÓDIGO ANTIGUO COMENTADO (generarTextoTicketInventario) ---
     const textoTicket = generarTextoTicketInventario(inventario, userProfile); 
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`<html><head><title>Reporte Inventario</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
     printWindow.document.close();
+    */
+    
+    // --- CÓDIGO NUEVO (Aún por implementar) ---
+    // En la próxima respuesta, reemplazaremos la lógica comentada de arriba
+    // con la lógica de WebviewWindow, igual que handleReimprimirCompra
+    // alert("Función de imprimir inventario pendiente de actualizar a WebviewWindow.");
+
+  //};
+
+
+  const handleImprimirInventario = () => {
+    if (inventario.length === 0) {
+      alert('No hay datos de inventario para imprimir.');
+      return;
+    }
+
+    if (!isTauriEnvironment()) {
+      printInventarioEnNavegador();
+      return;
+    }
+
+    const ticketPayload = {
+      items: inventario.map(({ id, nombre, stock, precioCompra }) => ({
+        id,
+        nombre,
+        stock,
+        precioCompra,
+      })),
+      fechaGeneracion: new Date().toISOString(),
+    };
+
+    localStorage.setItem('ticketData', JSON.stringify(ticketPayload));
+    localStorage.setItem('ticketUser', JSON.stringify(userProfile));
+    localStorage.setItem('ticketType', 'inventario');
+
+    const label = `ticket-inventario-${Date.now()}`;
+
+    const webview = new WebviewWindow(label, {
+      url: '/imprimir',
+      title: 'Reporte de Inventario',
+      width: 310,
+      height: 600,
+      resizable: true,
+      decorations: true,
+    });
+
+    webview.once('tauri://created', function () {
+      console.log('Ventana de impresión de inventario creada');
+    });
+    webview.once('tauri://error', function (e) {
+      console.error('Error al crear ventana de impresión de inventario:', e);
+      alert('Error al abrir la ventana de impresión de inventario. ¿Reiniciaste la app (npm run tauri dev) después de cambiar los permisos?');
+      printInventarioEnNavegador();
+    });
   };
+
 
   // --- Función de Análisis ---
   const handleGenerateAnalisis = async () => {
@@ -550,7 +699,7 @@ function PaginaReportes() {
               <label htmlFor="fecha-inicio">Desde:</label>
               <input type="date" id="fecha-inicio" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
               <label htmlFor="fecha-fin">Hasta:</label>
-              <input type="date" id="fecha-fin" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
+              <input type="date" id="fecha-fin" value={fechaFin} onChange={(e) => setFechaFin(e.g.value)} />
               <button onClick={handleFetchHistorialVentasMenores} className="btn-generar" disabled={loading}>
                 {loading ? "Buscando..." : "Buscar Ventas Menores"}
               </button>
@@ -728,10 +877,11 @@ function PaginaReportes() {
         
       </div>
       
-      {/* Contenedor invisible para la impresión 8cm del Inventario */}
-      <div className="inventario-print-container">
+      {/* --- CÓDIGO ANTIGUO COMENTADO (Contenedor invisible) --- */}
+      {/* <div className="inventario-print-container">
         <TicketInventario ref={inventarioPrintRef} inventario={inventario} />
       </div>
+      */}
 
       {/* --- ¡PASO 4: AÑADIR EL ÁREA DE IMPRESIÓN! --- */}
       {/* --- FIN DEL PASO 4 --- */}

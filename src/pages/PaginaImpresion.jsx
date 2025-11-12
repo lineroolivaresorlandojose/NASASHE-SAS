@@ -1,9 +1,17 @@
 // src/pages/PaginaImpresion.jsx
 
 import React, { useState, useEffect } from 'react';
-import { appWindow } from '@tauri-apps/api/window'; // Para cerrar la ventana
+//         CORRECTO
+//        import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'; // Para cerrar la ventana
+//        import { appWindow } from '@tauri-apps/api/window'; // Para cerrar la ventana
+//        import TicketCompra from '../components/TicketCompra';
+//        (Aquí importaremos TicketVenta, etc., más adelante)
+
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'; // Para cerrar la ventana
 import TicketCompra from '../components/TicketCompra';
+import TicketInventario from '../components/TicketInventario';
 // (Aquí importaremos TicketVenta, etc., más adelante)
+
 
 import '../components/TicketCompra.css'; // Importa los estilos del ticket
 
@@ -59,7 +67,9 @@ function PaginaImpresion() {
         
         // 2.1. Escuchar el evento de "después de imprimir"
         const handleAfterPrint = () => {
-          appWindow.close(); // Cierra la ventana de Tauri
+          // appWindow.close(); // Cierra la ventana de Tauri
+          const currentWindow = getCurrentWebviewWindow();
+          currentWindow.close(); // Cierra la ventana de Tauri
         };
         window.onafterprint = handleAfterPrint;
 
@@ -83,9 +93,14 @@ function PaginaImpresion() {
 
   // Usamos un 'switch' para decidir qué ticket renderizar
   switch (ticket.type) {
+//            case 'compra':
+//                return <TicketCompra compraData={ticket.data} usuario={ticket.user} />;
+    
     case 'compra':
       return <TicketCompra compraData={ticket.data} usuario={ticket.user} />;
-    
+    case 'inventario':
+      return <TicketInventario inventarioData={ticket.data} usuario={ticket.user} />;
+
     // (Aquí añadiremos 'venta', 'gasto', etc. después)
     
     default:
