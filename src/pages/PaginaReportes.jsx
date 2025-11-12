@@ -363,162 +363,123 @@ function PaginaReportes() {
     printWindow.document.close();
   }; */
 
-
-  const printCompraEnNavegador = (compraData, userProfile) => {
-    // 1. Generas tu texto HTML como ya lo hacías
-    const textoTicket = generarTextoTicketCompra(compraData, userProfile);
-  
-    // 2. Creas un "iframe" (una ventana interna) invisible
+  const imprimirTicketEnNavegador = (contenido, titulo) => {
     const iframe = document.createElement('iframe');
     iframe.style.position = 'absolute';
     iframe.style.width = '0';
     iframe.style.height = '0';
     iframe.style.border = 'none';
     document.body.appendChild(iframe);
-  
-    // 3. Escribes tu HTML dentro de ese iframe
+
     const doc = iframe.contentWindow.document;
     doc.open();
-    doc.write(textoTicket); // Aquí pones tu HTML
+    doc.write(`<!DOCTYPE html><html><head><title>${titulo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; margin: 0; padding: 8px; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${contenido}</pre></body></html>`);
     doc.close();
-  
-    // 4. Mandas a imprimir el contenido SÓLO del iframe
-    iframe.contentWindow.focus(); // Necesario para que funcione
-    iframe.contentWindow.print();
-  
-    // 5. (Opcional) Limpias y eliminas el iframe después de un segundo
-    setTimeout(() => {
-      document.body.removeChild(iframe);
-    }, 1000);
+
+    const ejecutarImpresion = () => {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      setTimeout(() => {
+        if (iframe.parentNode) {
+          iframe.parentNode.removeChild(iframe);
+        }
+      }, 1000);
+    };
+
+    if (window.requestAnimationFrame) {
+      window.requestAnimationFrame(ejecutarImpresion);
+    } else {
+      setTimeout(ejecutarImpresion, 0);
+    }
   };
 
-  const prepararEImprimir = async (compra) => {
-    if (!compra) return;
+  const printCompraEnNavegador = (compraData) => {
+    const textoTicket = generarTextoTicketCompra(compraData, userProfile);
+    imprimirTicketEnNavegador(textoTicket, `Ticket ${compraData.consecutivo}`);
+  };
+
+  const printVentaEnNavegador = (ventaData) => {
+    const textoTicket = generarTextoTicketVenta(ventaData, userProfile);
+    imprimirTicketEnNavegador(textoTicket, `Ticket ${ventaData.consecutivo}`);
+  };
+
+  const printVentaMenorEnNavegador = (ventaData) => {
+    const textoTicket = generarTextoTicketVentaMenor(ventaData, userProfile);
+    imprimirTicketEnNavegador(textoTicket, `Ticket ${ventaData.consecutivo}`);
+  };
+
+  const printGastoEnNavegador = (gastoData) => {
+    const textoTicket = generarTextoTicketGasto(gastoData, userProfile);
+    imprimirTicketEnNavegador(textoTicket, `Comprobante ${gastoData.consecutivo}`);
+  };
+
+  const prepararEImprimir = async (tipo, datos) => {
+    if (!datos) return;
+
+    const ejecutarFallback = () => {
+      switch (tipo) {
+        case 'compra':
+          return printCompraEnNavegador(datos);
+        case 'venta':
+          return printVentaEnNavegador(datos);
+        case 'ventaMenor':
+          return printVentaMenorEnNavegador(datos);
+        case 'gasto':
+          return printGastoEnNavegador(datos);
+        default:
+          console.warn(`Tipo de ticket no soportado para impresión en navegador: ${tipo}`);
+      }
+    };
 
     if (!isTauriEnvironment()) {
-      printCompraEnNavegador(compra);
+      ejecutarFallback();
       return;
     }
 
-    // 1. Guardar los datos en localStorage (la nueva ventana leerá esto)
-    //    JSON.stringify convierte el objeto en texto
-    localStorage.setItem('ticketData', JSON.stringify(compra));
-    localStorage.setItem('ticketUser', JSON.stringify(userProfile));
-    localStorage.setItem('ticketType', 'compra'); // Le dice a la ventana qué ticket mostrar
+    try {
+      localStorage.setItem('ticketData', JSON.stringify(datos));
+      localStorage.setItem('ticketUser', JSON.stringify(userProfile));
+      localStorage.setItem('ticketType', tipo);
+    } catch (error) {
+      console.error('Error al preparar datos para impresión:', error);
+      ejecutarFallback();
+      return;
+    }
 
-    // 2. Crear una etiqueta única para la ventana
-    //    (Esto evita que se abran 10 ventanas si el usuario hace clic rápido)
-    const label = `ticket-compra-${compra.consecutivo.replace(/\s/g, '-')}`;
+    const normalizarConsecutivo = (valor) =>
+      (valor ? String(valor) : `${Date.now()}`).replace(/\s/g, '-');
 
-    // 3. Crear la ventana de Tauri
+    const consecutivoNormalizado = normalizarConsecutivo(datos.consecutivo);
+
+    let label = `ticket-${tipo}-${consecutivoNormalizado}`;
+    let tituloVentana = 'Impresión de ticket';
+
+    if (tipo === 'gasto') {
+      tituloVentana = `Comprobante ${datos.consecutivo || ''}`.trim();
+    } else if (datos.consecutivo) {
+      tituloVentana = `Ticket ${datos.consecutivo}`;
+    }
+
     const webview = new WebviewWindow(label, {
-      url: '/imprimir', // La ruta que creamos en App.jsx
-      title: `Ticket ${compra.consecutivo}`,
-      width: 310, // Ancho de 80mm (aprox 302px) + márgenes
+      url: '/imprimir',
+      title: tituloVentana,
+      width: 310,
       height: 600,
       resizable: true,
-      decorations: true, // Que tenga la barra de título
+      decorations: true,
     });
 
-    // 4. Manejar eventos
-    webview.once('tauri://created', function () {
+    webview.once('tauri://created', () => {
       console.log('Ventana de impresión creada');
     });
-    webview.once('tauri://error', function (e) {
+
+    webview.once('tauri://error', (e) => {
       console.error('Error al crear ventana de impresión:', e);
-      alert('Error al abrir la ventana de impresión. ¿Reiniciaste la app (npm run tauri dev) después de cambiar los permisos?');
-      printCompraEnNavegador(compra);
+      ejecutarFallback();
     });
-    
-  };
-
-
-
-  // ¡REEMPLAZA ESTA FUNCIÓN!
-  const prepararEImprimirventa = async (venta) => {
-    if (!venta) return;
-
-    if (!isTauriEnvironment()) {
-      // Fallback para navegador
-      const textoTicket = generarTextoTicketVenta(venta, userProfile); 
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(`<html><head><title>Ticket ${venta.consecutivo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
-      printWindow.document.close();
-      return;
-    }
-
-    // Lógica de Tauri
-    localStorage.setItem('ticketData', JSON.stringify(venta));
-    localStorage.setItem('ticketUser', JSON.stringify(userProfile));
-    localStorage.setItem('ticketType', 'venta'); // <-- Tipo 'venta'
-    
-    const label = `ticket-venta-${venta.consecutivo.replace(/\s/g, '-')}`;
-    const webview = new WebviewWindow(label, {
-      url: '/imprimir',
-      title: `Ticket ${venta.consecutivo}`,
-      width: 310, 
-      height: 600,
-    });
-    webview.once('tauri://error', (e) => console.error(e));
-  };
-
-  // ¡REEMPLAZA ESTA FUNCIÓN!
-  const prepararEImprimirVentaMenor = async (venta) => {
-    if (!venta) return;
-
-    if (!isTauriEnvironment()) {
-      // Fallback para navegador
-      const textoTicket = generarTextoTicketVentaMenor(venta, userProfile); 
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(`<html><head><title>Ticket ${venta.consecutivo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
-      printWindow.document.close();
-      return;
-    }
-
-    // Lógica de Tauri
-    localStorage.setItem('ticketData', JSON.stringify(venta));
-    localStorage.setItem('ticketUser', JSON.stringify(userProfile));
-    localStorage.setItem('ticketType', 'ventaMenor'); // <-- Tipo 'ventaMenor'
-    
-    const label = `ticket-venta-menor-${venta.consecutivo.replace(/\s/g, '-')}`;
-    const webview = new WebviewWindow(label, {
-      url: '/imprimir',
-      title: `Ticket ${venta.consecutivo}`,
-      width: 310, 
-      height: 600,
-    });
-    webview.once('tauri://error', (e) => console.error(e));
-  };
-
-  // ¡REEMPLAZA ESTA FUNCIÓN!
-  const prepararEImprimirGasto = async (gasto) => {
-    if (!gasto) return;
-
-    if (!isTauriEnvironment()) {
-      // Fallback para navegador
-      const textoTicket = generarTextoTicketGasto(gasto, userProfile); 
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(`<html><head><title>Comprobante ${gasto.consecutivo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
-      printWindow.document.close();
-      return;
-    }
-
-    // Lógica de Tauri
-    localStorage.setItem('ticketData', JSON.stringify(gasto));
-    localStorage.setItem('ticketUser', JSON.stringify(userProfile));
-    localStorage.setItem('ticketType', 'gasto'); // <-- Tipo 'gasto'
-    
-    const label = `ticket-gasto-${gasto.consecutivo.replace(/\s/g, '-')}`;
-    const webview = new WebviewWindow(label, {
-      url: '/imprimir',
-      title: `Comprobante ${gasto.consecutivo}`,
-      width: 310, 
-      height: 600,
-    });
-    webview.once('tauri://error', (e) => console.error(e));
   };
   // --- FIN DE LA MODIFICACIÓN ---
-
+  
   // --- Funciones de Inventario ---
   const handleFetchInventario = async () => {
     // ... (tu código sigue igual)
@@ -544,7 +505,13 @@ function PaginaReportes() {
     const tableColumn = ["Nombre", "Precio Compra ($)", "Stock Actual (kg/und)"];
     const tableRows = [];
     inventario.forEach(item => {
-      const itemData = [ item.nombre, item.precioCompra.toLocaleString('es-CO'), item.stock ];
+      const precioCompra = Number(item?.precioCompra ?? 0);
+      const stockActual = Number(item?.stock ?? 0);
+      const itemData = [
+        item?.nombre || 'Sin nombre',
+        precioCompra.toLocaleString('es-CO'),
+        stockActual.toLocaleString('es-CO'),
+      ];
       tableRows.push(itemData);
     });
     autoTable(doc, { head: [tableColumn], body: tableRows, startY: 30 });
@@ -772,7 +739,7 @@ function PaginaReportes() {
                       <td>${compra.total.toLocaleString('es-CO')}</td>
                       <td>
                         {/* ¡Este botón ahora usa la nueva función! */}
-                        <button onClick={() => prepararEImprimir('compra', compra, userProfile )} className="btn-reimprimir">
+                        <button onClick={() => prepararEImprimir('compra', compra)} className="btn-reimprimir">
                           Re-imprimir
                         </button>
                       </td>
@@ -819,7 +786,7 @@ function PaginaReportes() {
                       <td>{venta.proveedor.nombre}</td>
                       <td>${venta.total.toLocaleString('es-CO')}</td>
                       <td>
-                        <button onClick={() => prepararEImprimir('venta', venta, userProfile)} className="btn-reimprimir">
+                      <button onClick={() => prepararEImprimir('venta', venta)} className="btn-reimprimir">
                           Re-imprimir
                         </button>
                       </td>
@@ -866,7 +833,7 @@ function PaginaReportes() {
                       <td>{venta.cliente}</td>
                       <td>${venta.total.toLocaleString('es-CO')}</td>
                       <td>
-                        <button onClick={() => prepararEImprimir('ventaMenor', venta, userProfile)} className="btn-reimprimir">
+                      <button onClick={() => prepararEImprimir('ventaMenor', venta)} className="btn-reimprimir">
                           Re-imprimir
                         </button>
                       </td>
@@ -915,7 +882,7 @@ function PaginaReportes() {
                       <td>{gasto.descripcion}</td>
                       <td>${gasto.monto.toLocaleString('es-CO')}</td>
                       <td>
-                        <button onClick={() => prepararEImprimir('gasto', gasto, userProfile)} className="btn-reimprimir">
+                      <button onClick={() => prepararEImprimir('gasto', gasto, userProfile)} className="btn-reimprimir">
                           Re-imprimir
                         </button>
                       </td>
@@ -944,8 +911,8 @@ function PaginaReportes() {
                 >
                   Exportar a PDF
                 </button>
-                <button 
-                  onClick={prepararEImprimir} 
+                <button
+                  onClick={handleImprimirInventario}  
                   className="btn-imprimir-inventario"
                   disabled={inventario.length === 0}
                 >
