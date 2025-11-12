@@ -137,10 +137,10 @@ const prepararEImprimir = async (tipo, datos, usuario) => {
   // Paso 2: Tocar el timbre (Abrir la ventana de impresión)
   const printLabel = `print_${Date.now()}`;
   const webview = new WebviewWindow(printLabel, {
-    url: '/impresion', // La RUTA de React para PaginaImpresion.jsx
+    url: '/imprimir', // La RUTA de React para PaginaImpresion.jsx
     title: 'Imprimiendo Ticket...',
-    visible: false,
-    width: 800,
+    visible: true,
+    width: 2000,
     height: 600,
   });
 
@@ -392,7 +392,7 @@ function PaginaReportes() {
     }, 1000);
   };
 
-  const handleReimprimirCompra = async (compra) => {
+  const prepararEImprimir = async (compra) => {
     if (!compra) return;
 
     if (!isTauriEnvironment()) {
@@ -426,7 +426,7 @@ function PaginaReportes() {
     });
     webview.once('tauri://error', function (e) {
       console.error('Error al crear ventana de impresión:', e);
-//      alert('Error al abrir la ventana de impresión. ¿Reiniciaste la app (npm run tauri dev) después de cambiar los permisos?');
+      alert('Error al abrir la ventana de impresión. ¿Reiniciaste la app (npm run tauri dev) después de cambiar los permisos?');
       printCompraEnNavegador(compra);
     });
     
@@ -435,7 +435,7 @@ function PaginaReportes() {
 
 
   // ¡REEMPLAZA ESTA FUNCIÓN!
-  const handleReimprimirVenta = async (venta) => {
+  const prepararEImprimirventa = async (venta) => {
     if (!venta) return;
 
     if (!isTauriEnvironment()) {
@@ -463,7 +463,7 @@ function PaginaReportes() {
   };
 
   // ¡REEMPLAZA ESTA FUNCIÓN!
-  const handleReimprimirVentaMenor = async (venta) => {
+  const prepararEImprimirVentaMenor = async (venta) => {
     if (!venta) return;
 
     if (!isTauriEnvironment()) {
@@ -491,7 +491,7 @@ function PaginaReportes() {
   };
 
   // ¡REEMPLAZA ESTA FUNCIÓN!
-  const handleReimprimirGasto = async (gasto) => {
+  const prepararEImprimirGasto = async (gasto) => {
     if (!gasto) return;
 
     if (!isTauriEnvironment()) {
@@ -772,7 +772,7 @@ function PaginaReportes() {
                       <td>${compra.total.toLocaleString('es-CO')}</td>
                       <td>
                         {/* ¡Este botón ahora usa la nueva función! */}
-                        <button onClick={() => prepararEImprimir(compra)} className="btn-reimprimir">
+                        <button onClick={() => prepararEImprimir('compra', compra, userProfile )} className="btn-reimprimir">
                           Re-imprimir
                         </button>
                       </td>
@@ -819,7 +819,7 @@ function PaginaReportes() {
                       <td>{venta.proveedor.nombre}</td>
                       <td>${venta.total.toLocaleString('es-CO')}</td>
                       <td>
-                        <button onClick={() => prepararEImprimir(venta)} className="btn-reimprimir">
+                        <button onClick={() => prepararEImprimir('venta', venta, userProfile)} className="btn-reimprimir">
                           Re-imprimir
                         </button>
                       </td>
@@ -866,7 +866,7 @@ function PaginaReportes() {
                       <td>{venta.cliente}</td>
                       <td>${venta.total.toLocaleString('es-CO')}</td>
                       <td>
-                        <button onClick={() => prepararEImprimir(venta)} className="btn-reimprimir">
+                        <button onClick={() => prepararEImprimir('ventaMenor', venta, userProfile)} className="btn-reimprimir">
                           Re-imprimir
                         </button>
                       </td>
@@ -915,7 +915,7 @@ function PaginaReportes() {
                       <td>{gasto.descripcion}</td>
                       <td>${gasto.monto.toLocaleString('es-CO')}</td>
                       <td>
-                        <button onClick={() => prepararEImprimir(gasto)} className="btn-reimprimir">
+                        <button onClick={() => prepararEImprimir('gasto', gasto, userProfile)} className="btn-reimprimir">
                           Re-imprimir
                         </button>
                       </td>
