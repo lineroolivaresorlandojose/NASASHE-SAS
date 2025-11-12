@@ -1,5 +1,18 @@
 /* src/components/TicketCompra.css */
 
+/*
+  ESTO ES LO NUEVO:
+  Le dice al navegador el tamaño del PAPEL
+*/
+@page {
+  /* Ancho de 80mm, altura automática según el contenido */
+  size: 80mm auto; 
+  
+  /* Quita TODOS los márgenes (incluyendo encabezados y pies de página) */
+  margin: 0;
+}
+
+
 .ticket-container {
   width: 288px;
   padding: 10px;
