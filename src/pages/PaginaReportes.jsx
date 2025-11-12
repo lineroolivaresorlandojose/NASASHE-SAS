@@ -1,7 +1,7 @@
 // src/pages/PaginaReportes.jsx
 
 //        import React, { useState, useRef } from 'react';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { db } from '../firebase';
 import { 
   collection, 
@@ -428,6 +428,22 @@ function PaginaReportes() {
     doc.save(`Reporte_Inventario_${fechaHoy}.pdf`);
   };
 
+
+  // ¡AÑADE ESTA FUNCIÓN NUEVA AQUÍ!
+  const printInventarioEnNavegador = () => {
+    const textoTicket = generarTextoTicketInventario(inventario, userProfile);
+    const printWindow = window.open('', '_blank');
+
+    if (!printWindow) {
+      alert('El navegador bloqueó la ventana emergente del ticket. Habilita las ventanas emergentes e inténtalo nuevamente.');
+      return;
+    }
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Reporte Inventario</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; margin: 0; padding: 8px; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
+    printWindow.document.close();
+  };
+
+  
   // (Esta función de inventario seguirá fallando hasta que la actualicemos)
   //            const handleImprimirInventario = () => {
   //               if (inventario.length === 0) { alert("No hay datos de inventario para imprimir."); return; }
