@@ -8,8 +8,8 @@ const isTauriEnvironment = () =>
 
 export async function showMessage(texto, options = {}) {
   if (isTauriEnvironment()) {
-    // Importación dinámica para no romper en el entorno web
-    const { message } = await import('@tauri-apps/api/dialog');
+    // Importación dinámica para no romper en el entorno web␊
+    const { message } = await import('@tauri-apps/plugin-dialog');
     return message(texto, options);
   }
 
