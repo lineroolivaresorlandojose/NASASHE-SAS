@@ -3,9 +3,11 @@
 
 // --- FUNCIÓN DE TICKET DE COMPRA (Existente) ---
 export const generarTextoTicketCompra = (compraData, usuario) => {
-  const fecha = compraData.fecha.toDate ? 
-                compraData.fecha.toDate().toLocaleString('es-CO') : 
+  const fecha = compraData.fecha.toDate ?
+                compraData.fecha.toDate().toLocaleString('es-CO') :
                 new Date(compraData.fecha).toLocaleString('es-CO');
+
+  const reciclador = (compraData.reciclador || '').toString().trim() || 'N/A';
   
   const centrar = (texto, ancho) => {
     const espacios = Math.max(0, Math.floor((ancho - texto.length) / 2));
@@ -25,6 +27,7 @@ export const generarTextoTicketCompra = (compraData, usuario) => {
   contenido += "Actividad: Compra\n";
   contenido += `Fecha: ${fecha}\n`;
   contenido += `Facturado por: ${usuario?.nombre || 'SISTEMA'}\n`;
+  contenido += `Reciclador: ${reciclador}\n`;
   contenido += "-".repeat(ancho) + "\n";
   contenido += "Material".padEnd(19) + "Cant.".padStart(6) + "Prec.".padStart(9) + "Total".padStart(11) + "\n";
   contenido += "-".repeat(ancho) + "\n";
@@ -53,9 +56,12 @@ export const generarTextoTicketCompra = (compraData, usuario) => {
 
 // --- ¡NUEVA FUNCIÓN DE TICKET DE VENTA! ---
 export const generarTextoTicketVenta = (ventaData, usuario) => {
-  const fecha = ventaData.fecha.toDate ? 
-                ventaData.fecha.toDate().toLocaleString('es-CO') : 
+  const fecha = ventaData.fecha.toDate ?
+                ventaData.fecha.toDate().toLocaleString('es-CO') :
                 new Date(ventaData.fecha).toLocaleString('es-CO');
+
+  const proveedorNombre = (ventaData?.proveedor?.nombre || '').toString().trim() || 'N/A';
+  const proveedorNit = (ventaData?.proveedor?.nit || '').toString().trim() || 'N/A';
   
   const centrar = (texto, ancho) => {
     const espacios = Math.max(0, Math.floor((ancho - texto.length) / 2));
@@ -75,8 +81,8 @@ export const generarTextoTicketVenta = (ventaData, usuario) => {
   contenido += "Actividad: Venta\n";
   contenido += `Fecha: ${fecha}\n`;
   contenido += `Vendido por: ${usuario?.nombre || 'SISTEMA'}\n`;
-  contenido += `Cliente: ${ventaData.proveedor.nombre}\n`;
-  contenido += `NIT: ${ventaData.proveedor.nit}\n`;
+  contenido += `Cliente: ${proveedorNombre}\n`;
+  contenido += `NIT: ${proveedorNit}\n`;
   contenido += "-".repeat(ancho) + "\n";
   contenido += "Material".padEnd(19) + "Cant.".padStart(6) + "Prec.".padStart(9) + "Total".padStart(11) + "\n";
   contenido += "-".repeat(ancho) + "\n";
@@ -105,9 +111,11 @@ export const generarTextoTicketVenta = (ventaData, usuario) => {
 
 // --- ¡NUEVA FUNCIÓN DE TICKET DE VENTA MENOR! ---
 export const generarTextoTicketVentaMenor = (ventaData, usuario) => {
-  const fecha = ventaData.fecha.toDate ? 
-                ventaData.fecha.toDate().toLocaleString('es-CO') : 
+  const fecha = ventaData.fecha.toDate ?
+                ventaData.fecha.toDate().toLocaleString('es-CO') :
                 new Date(ventaData.fecha).toLocaleString('es-CO');
+
+  const cliente = (ventaData?.cliente || '').toString().trim() || 'N/A';
   
   const centrar = (texto, ancho) => {
     const espacios = Math.max(0, Math.floor((ancho - texto.length) / 2));
@@ -127,7 +135,7 @@ export const generarTextoTicketVentaMenor = (ventaData, usuario) => {
   contenido += "Actividad: Venta Menor\n";
   contenido += `Fecha: ${fecha}\n`;
   contenido += `Vendido por: ${usuario?.nombre || 'SISTEMA'}\n`;
-  contenido += `Cliente: ${ventaData.cliente}\n`; // Cliente (no proveedor)
+  contenido += `Cliente: ${cliente}\n`; // Cliente (no proveedor)
   contenido += "-".repeat(ancho) + "\n";
   contenido += "Descripción".padEnd(19) + "Cant.".padStart(6) + "Prec.".padStart(9) + "Total".padStart(11) + "\n";
   contenido += "-".repeat(ancho) + "\n";
