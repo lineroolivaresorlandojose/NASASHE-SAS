@@ -124,7 +124,7 @@ function PaginaCompras() {
       setPrecioArticuloManual('');
     }
     if (id === 'otros') {
-      setImagenPreviewUrl('');
+      setImagenPreviewUrl('/icons/OTRO.jpg');
       return;
     }
     if (id) {

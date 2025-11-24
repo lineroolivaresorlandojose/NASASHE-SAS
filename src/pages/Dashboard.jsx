@@ -49,6 +49,13 @@ function Dashboard() {
               icono="/icons/usuarios.png"
               to="/usuarios"
             />
+            
+            <ModuleButton
+              titulo="Configuración"
+              descripcion="Restablecer consecutivos y ajustes generales."
+              icono="/icons/logo.png"
+              to="/configuracion"
+            />
           </>
         )}
         
