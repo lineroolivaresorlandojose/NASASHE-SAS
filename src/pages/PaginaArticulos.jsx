@@ -11,6 +11,7 @@ import {
   updateDoc 
 } from 'firebase/firestore';
 import './PaginaArticulos.css';
+// import { message } from "@tauri-apps/api/dialog";
 
 // 1. ¡NUEVO! Lista de todas tus imágenes en la carpeta /public/icons/
 const listaDeImagenes = [
@@ -78,7 +79,9 @@ function PaginaArticulos() {
     const precioVentaNum = Number(nuevoPrecioVenta);
     const stockNum = Number(nuevoStock);
     if (!nuevoNombre || precioCompraNum <= 0 || precioVentaNum <= 0) {
-      alert("Por favor, completa Nombre y ambos Precios con valores válidos.");
+      await message("Por favor, completa Nombre y ambos Precios con valores válidos.", {
+        title: 'Nasashe sas',
+        type: 'warning'});
       return;
     }
     try {
@@ -159,7 +162,9 @@ function PaginaArticulos() {
       imagenUrl: editFormData.imagenUrl || ''
     };
     if (!datosActualizados.nombre || datosActualizados.precioCompra <= 0 || datosActualizados.precioVenta <= 0) {
-      alert("Por favor, completa Nombre y ambos Precios con valores válidos.");
+      await message("Por favor, completa Nombre y ambos Precios con valores válidos.", {
+        title: 'Nasashe sas',
+        type: 'warning'});
       return;
     }
     try {
@@ -285,7 +290,7 @@ function PaginaArticulos() {
                     </td>
                     <td>{articulo.nombre}</td>
                     <td>${articulo.precioCompra.toLocaleString('es-CO')}</td>
-                    <td>{articulo.stock}</td>
+                    <td>{(Number(articulo.stock) || 0).toFixed(2)}</td>
                     <td className="acciones-cell">
                       <button onClick={() => handleEditClick(articulo)} className="btn-editar">Editar</button>
                       <button onClick={() => handleDelete(articulo.id)} className="btn-borrar">Borrar</button>

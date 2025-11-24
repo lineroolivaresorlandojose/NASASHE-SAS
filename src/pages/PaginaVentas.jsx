@@ -13,7 +13,8 @@ import {
 import { useCaja } from '../context/CajaContext';
 import './PaginaVentas.css'; // ¡CSS de Ventas!
 // ¡Importamos la NUEVA función de ticket!
-import { generarTextoTicketVenta } from '../utils/generarTickets'; 
+import { generarTextoTicketVenta } from '../utils/generarTickets';
+import { imprimirTicketEnNavegador } from '../utils/imprimirTicket';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 const isTauriEnvironment = () => typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__);
 
@@ -219,13 +220,14 @@ function PaginaVentas() {
 
   const printVentaEnNavegador = (ventaData) => {
     const textoTicket = generarTextoTicketVenta(ventaData, userProfile);
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert('El navegador bloqueó la ventana emergente del ticket.');
-      return;
+    const exito = imprimirTicketEnNavegador({
+      titulo: `Ticket ${ventaData.consecutivo}`,
+      textoTicket,
+    });
+
+    if (!exito) {
+      alert('No se pudo preparar la impresión del ticket en el navegador. Verifica la configuración de impresión e inténtalo nuevamente.');
     }
-    printWindow.document.write(`<html><head><title>Ticket ${ventaData.consecutivo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
-    printWindow.document.close();
   };
 
   const handleImprimir = async () => {
@@ -320,7 +322,7 @@ function PaginaVentas() {
               <option value="">-- Seleccione un Artículo --</option>
               {articulos.map(a => (
                 <option key={a.id} value={a.id}>
-                  {a.nombre} (${a.precioVenta}/kg) - Stock: {a.stock || 0}
+                  {a.nombre} (${a.precioVenta}/kg) - Stock: {(Number(a.stock) || 0).toFixed(2)}
                 </option>
               ))}
             </select>

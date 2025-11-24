@@ -50,6 +50,7 @@ import GraficaBarras from '../components/GraficaBarras';
 // ¡AÑADE ESTA LÍNEA!
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';                                                                                                                     
 
+// import { message } from "@tauri-apps/api/dialog";
 //                                                const isTauriEnvironment = () => typeof window !== 'undefined' && Boolean(window.__TAURI__);
 
 const isTauriEnvironment = () =>
@@ -113,7 +114,7 @@ const generarTextoTicketInventario = (inventario, usuario) => {
   contenido += "-".repeat(ancho) + "\n";
   inventario.forEach(item => {
     const nombre = item.nombre.length > 29 ? item.nombre.substring(0, 29) : item.nombre;
-    const stock = item.stock.toString();
+    const stock = (Number(item.stock) || 0).toFixed(2);
     contenido += nombre.padEnd(30) + stock.padStart(15) + "\n";
   });
   contenido += "-".repeat(ancho) + "\n";
@@ -201,7 +202,10 @@ function PaginaReportes() {
       const qVentasMenores = query(collection(db, "ventasMenores"), where("fecha", ">=", startTimestamp), where("fecha", "<=", endTimestamp));
       const ventasMenoresSnap = await getDocs(qVentasMenores);
       ventasMenoresSnap.forEach(doc => sumaVentasMenores += doc.data().total);
-    } catch (error) { console.error("Error al generar el reporte: ", error); alert("Error al generar el reporte."); }
+    } catch (error) { console.error("Error al generar el reporte: ", error); await message("Error al generar el reporte.", {
+      title: 'Nasashe sas',
+      type: 'error' }); 
+    }
     setTotalCompras(sumaCompras);
     setTotalGastos(sumaGastos);
     setTotalVentasMenores(sumaVentasMenores);
@@ -224,7 +228,10 @@ function PaginaReportes() {
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach(doc => { const data = doc.data(); compras.push({ id: doc.id, ...data, fecha: data.fecha.toDate() }); });
       setHistorialCompras(compras);
-    } catch (error) { console.error("Error al buscar historial: ", error); alert("Error al buscar historial."); }
+    } catch (error) { console.error("Error al buscar historial: ", error); await message("Error al buscar historial.", {
+      title: 'Nasashe sas',
+      type: 'warning'});
+    }
     setLoading(false);
   };
 
@@ -242,7 +249,11 @@ function PaginaReportes() {
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach(doc => { const data = doc.data(); ventas.push({ id: doc.id, ...data, fecha: data.fecha.toDate() }); });
       setHistorialVentas(ventas);
-    } catch (error) { console.error("Error al buscar historial de ventas: ", error); alert("Error al buscar historial."); }
+    } catch (error) { console.error("Error al buscar historial de ventas: ", error); await message("Error al buscar historial.", {
+      title: 'Nasashe sas',
+      type: 'error' 
+    }); 
+  }
     setLoading(false);
   };
   
@@ -260,7 +271,11 @@ function PaginaReportes() {
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach(doc => { const data = doc.data(); ventas.push({ id: doc.id, ...data, fecha: data.fecha.toDate() }); });
       setHistorialVentasMenores(ventas);
-    } catch (error) { console.error("Error al buscar historial de ventas menores: ", error); alert("Error al buscar historial."); }
+    } catch (error) { console.error("Error al buscar historial de ventas menores: ", error); await message("Error al buscar historial.", {
+      title: 'Nasashe sas',
+      type: 'error' // Puedes usar 'info', 'warning', o 'error'
+    }); 
+    }
     setLoading(false);
   };
   
@@ -278,7 +293,10 @@ function PaginaReportes() {
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach(doc => { const data = doc.data(); gastos.push({ id: doc.id, ...data, fecha: data.fecha.toDate() }); });
       setHistorialGastos(gastos);
-    } catch (error) { console.error("Error al buscar historial de gastos: ", error); alert("Error al buscar historial."); }
+    } catch (error) { console.error("Error al buscar historial de gastos: ", error); await message("Error al buscar historial." , {
+      title: 'Nasashe sas',
+      type: 'error'}); 
+    }
     setLoading(false);
   };
 
@@ -467,13 +485,18 @@ function PaginaReportes() {
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach(doc => { inventarioLista.push({ id: doc.id, ...doc.data() }); });
       setInventario(inventarioLista);
-    } catch (error) { console.error("Error al cargar inventario: ", error); alert("Error al cargar inventario."); }
+    } catch (error) { console.error("Error al cargar inventario: ", error); await message("Error al cargar inventario."), {
+      title: 'Nasashe sas',
+      type: 'error'}; 
+    }
     setLoadingInventario(false);
   };
 
-  const handleExportarPDF = () => {
+  const handleExportarPDF = async () => {
     if (inventario.length === 0) {
-      alert("No hay datos de inventario para exportar.");
+      await message("No hay datos de inventario para exportar." , {
+        title: 'Nasashe sas',
+        type: 'warning'});
       return;
     }
 
@@ -503,20 +526,27 @@ function PaginaReportes() {
 
     try {
       doc.save(`Reporte_Inventario_${fechaHoy}.pdf`);
-      alert('Su archivo se exportó con éxito en la carpeta de descargas.');
-    } catch (error) {
+      await message('Su archivo se exportó con éxito en la carpeta de descargas.' , {
+        title: 'Nasashe sas',
+        type: 'info'});
+    } 
+    catch (error) {
       console.error('Error al exportar el inventario a PDF:', error);
-      alert('Ocurrió un error al exportar el PDF. Por favor, inténtalo de nuevo.');
+      await message('Ocurrió un error al exportar el PDF. Por favor, inténtalo de nuevo.' , {
+        title: 'Nasashe sas',
+        type: 'error'});
     }
   };
 
-  const printInventarioEnNavegador = (payload) => {
+  const printInventarioEnNavegador = async (payload) => {
     const itemsParaImprimir = Array.isArray(payload?.items) && payload.items.length > 0
       ? payload.items
       : inventario;
 
     if (!itemsParaImprimir || itemsParaImprimir.length === 0) {
-      alert('No hay datos de inventario para imprimir.');
+      await message('No hay datos de inventario para imprimir.' , {
+        title: 'Nasashe sas',
+        type: 'warning'});
       return;
     }
 
@@ -576,7 +606,9 @@ function PaginaReportes() {
 
   const handleImprimirInventario = async () => {
     if (inventario.length === 0) {
-      alert('No hay datos de inventario para imprimir.');
+      await message('No hay datos de inventario para imprimir.', {
+        title: 'Nasashe sas',
+        type: 'error'});
       return;
     }
 
@@ -646,7 +678,9 @@ function PaginaReportes() {
 
     } catch (error) {
       console.error("Error al generar análisis: ", error);
-      alert("Error al generar análisis.");
+      await message("Error al generar análisis.", {
+        title: 'Error de analisis',
+        type: 'error'});
     }
     setLoading(false);
   };
@@ -935,7 +969,7 @@ function PaginaReportes() {
                     <tr key={item.id}>
                       <td>{item.nombre}</td>
                       <td>${item.precioCompra.toLocaleString('es-CO')}</td>
-                      <td>{item.stock}</td>
+                      <td>{(Number(item.stock) || 0).toFixed(2)}</td> 
                     </tr>
                   ))
                 )}

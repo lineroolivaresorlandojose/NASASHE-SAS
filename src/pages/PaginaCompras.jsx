@@ -16,7 +16,8 @@ import {
 } from 'firebase/firestore';
 import { useCaja } from '../context/CajaContext';
 import './PaginaCompras.css';
-import { generarTextoTicketCompra } from '../utils/generarTickets'; 
+import { generarTextoTicketCompra } from '../utils/generarTickets';
+import { imprimirTicketEnNavegador } from '../utils/imprimirTicket';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 
 // ¡AÑADE ESTA LÍNEA! (Con la variable correcta de v2)
@@ -277,18 +278,16 @@ function PaginaCompras() {
   };
 
 
-  // Función de respaldo para imprimir en navegador
   const printCompraEnNavegador = (compraData) => {
     const textoTicket = generarTextoTicketCompra(compraData, userProfile);
-    const printWindow = window.open('', '_blank');
+    const exito = imprimirTicketEnNavegador({
+      titulo: `Ticket ${compraData.consecutivo}`,
+      textoTicket,
+    });
 
-    if (!printWindow) {
-      alert('El navegador bloqueó la ventana emergente del ticket. Habilita las ventanas emergentes e inténtalo nuevamente.');
-      return;
+    if (!exito) {
+      alert('No se pudo preparar la impresión del ticket en el navegador. Verifica la configuración de impresión e inténtalo nuevamente.');
     }
-
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Ticket ${compraData.consecutivo}</title><style>body { font-family: 'Courier New', Courier, monospace; font-size: 10px; width: 80mm; margin: 0; padding: 8px; } @page { margin: 2mm; size: 80mm auto; }</style></head><body><pre>${textoTicket}</pre><script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); window.onfocus = () => setTimeout(() => window.close(), 500); };</script></body></html>`);
-    printWindow.document.close();
   };
 
   const handleImprimir = async () => {
@@ -383,7 +382,7 @@ function PaginaCompras() {
               <option value="">-- Seleccione un Artículo --</option>
               {articulos.map(a => (
                 <option key={a.id} value={a.id}>
-                  {a.nombre} (${a.precioCompra}/kg) - Stock: {a.stock || 0}
+                  {a.nombre} (${a.precioCompra}/kg) - Stock: {(Number(a.stock) || 0).toFixed(2)}
                 </option>
               ))}
             </select>
@@ -447,7 +446,7 @@ function PaginaCompras() {
                           style={{width: '60px', padding: '3px'}}
                         />
                       ) : (
-                        item.cantidad
+                        (Number(item.cantidad) || 0).toFixed(2)
                       )}
                     </td>
                     <td>${item.precioCompra}</td>
