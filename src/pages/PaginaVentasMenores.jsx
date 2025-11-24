@@ -109,9 +109,11 @@ function PaginaVentasMenores() {
         const nuevaBase = baseActual + totalVenta; // ¡SUMAMOS A LA BASE!
         nuevaBaseParaEstado = nuevaBase; // Guardamos para React
         
+        const clienteNombre = nombreCliente.trim().toUpperCase();
+
         const ventaData = {
           consecutivo: nuevoConsecutivoStr,
-          cliente: nombreCliente.toUpperCase() || 'PARTICULAR',
+          cliente: clienteNombre || 'N/A',
           items: itemsVenta,
           total: totalVenta,
           fecha: Timestamp.now(),

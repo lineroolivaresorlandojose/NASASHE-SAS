@@ -249,6 +249,7 @@ function PaginaArticulos() {
               <th className="articulo-imagen-header">Imagen</th>
               <th>Nombre</th>
               <th>Precio Compra</th>
+              <th>Precio Venta</th>
               <th>Stock</th>
               <th className="acciones-cell">Acciones</th>
             </tr>
@@ -276,6 +277,7 @@ function PaginaArticulos() {
                     </td>
                     <td><input type="text" name="nombre" value={editFormData.nombre} onChange={handleEditChange} /></td>
                     <td><input type="text" name="precioCompra" value={editFormData.precioCompra} onChange={handleEditChange} /></td>
+                    <td><input type="text" name="precioVenta" value={editFormData.precioVenta} onChange={handleEditChange} /></td>
                     <td><input type="text" name="stock" value={editFormData.stock} onChange={handleEditChange} /></td>
                     <td className="acciones-cell">
                       <button onClick={handleUpdateSubmit} className="btn-guardar">Guardar</button>
@@ -290,6 +292,7 @@ function PaginaArticulos() {
                     </td>
                     <td>{articulo.nombre}</td>
                     <td>${articulo.precioCompra.toLocaleString('es-CO')}</td>
+                    <td>${articulo.precioVenta.toLocaleString('es-CO')}</td>
                     <td>{(Number(articulo.stock) || 0).toFixed(2)}</td>
                     <td className="acciones-cell">
                       <button onClick={() => handleEditClick(articulo)} className="btn-editar">Editar</button>

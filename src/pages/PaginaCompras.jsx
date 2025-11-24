@@ -43,12 +43,14 @@ function PaginaCompras() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [articulos, setArticulos] = useState([]);
-  
+
   const [nombreReciclador, setNombreReciclador] = useState('');
   const [articuloSeleccionadoId, setArticuloSeleccionadoId] = useState('');
+  const [nombreArticuloManual, setNombreArticuloManual] = useState('');
+  const [precioArticuloManual, setPrecioArticuloManual] = useState('');
   const [cantidad, setCantidad] = useState('');
   const [imagenPreviewUrl, setImagenPreviewUrl] = useState('');
-  
+
   const [itemsCompra, setItemsCompra] = useState([]);
   const [totalCompra, setTotalCompra] = useState(0);
   
@@ -113,10 +115,18 @@ function PaginaCompras() {
     setTotalCompra(nuevoTotal);
   }, [itemsCompra]);
 
-  
+
   const handleArticuloChange = (e) => {
     const id = e.target.value;
     setArticuloSeleccionadoId(id);
+    if (id !== 'otros') {
+      setNombreArticuloManual('');
+      setPrecioArticuloManual('');
+    }
+    if (id === 'otros') {
+      setImagenPreviewUrl('');
+      return;
+    }
     if (id) {
       const articulo = articulos.find(a => a.id === id);
       if (articulo && articulo.imagenUrl) {
@@ -129,11 +139,46 @@ function PaginaCompras() {
     }
   };
 
-  const handleAddItem = () => {
+    const handleAddItem = () => {
     if (!articuloSeleccionadoId || !cantidad || Number(cantidad) <= 0) {
       alert("Seleccione un artículo y una cantidad (peso) válida.");
       return;
     }
+
+    const esArticuloManual = articuloSeleccionadoId === 'otros';
+
+    if (esArticuloManual) {
+      const nombreManualLimpio = nombreArticuloManual.trim().toUpperCase();
+      const precioManual = Number(precioArticuloManual);
+      const cantNum = Number(cantidad);
+
+      if (!nombreManualLimpio || !precioManual || precioManual <= 0) {
+        alert("Ingrese un nombre y un precio de compra válido para el material.");
+        return;
+      }
+
+      const subtotal = cantNum * precioManual;
+      setItemsCompra(prevState => ([
+        ...prevState,
+        {
+          localId: Date.now(),
+          articuloId: null,
+          nombre: nombreManualLimpio,
+          cantidad: cantNum,
+          precioCompra: precioManual,
+          subtotal,
+          esManual: true
+        }
+      ]));
+
+      setArticuloSeleccionadoId('');
+      setNombreArticuloManual('');
+      setPrecioArticuloManual('');
+      setCantidad('');
+      setImagenPreviewUrl('');
+      return;
+    }
+
     const articulo = articulos.find(a => a.id === articuloSeleccionadoId);
     if (!articulo) {
       alert("Error: Artículo no encontrado.");
@@ -224,9 +269,11 @@ function PaginaCompras() {
         throw new Error(`¡Error! Fondos insuficientes. Base: $${baseActual.toLocaleString('es-CO')}`);
       }
 
+      const recicladorNombre = nombreReciclador.trim().toUpperCase();
+
       const compraData = {
         consecutivo: nuevoConsecutivoStr,
-        reciclador: nombreReciclador.toUpperCase() || 'PÚBLICO GENERAL',
+        reciclador: recicladorNombre || 'N/A',
         items: itemsCompra,
         total: totalCompra,
         fecha: Timestamp.now(),
@@ -247,6 +294,8 @@ function PaginaCompras() {
 
       // (Tu 'forEach' para los artículos ya estaba PERFECTO)
       itemsCompra.forEach(itemEnCarrito => {
+        if (itemEnCarrito.esManual) return;
+
         const articuloCompleto = articulos.find(a => a.id === itemEnCarrito.articuloId);
         if (!articuloCompleto) {
           throw new Error(`Artículo ${itemEnCarrito.nombre} no encontrado en caché.`);
@@ -373,13 +422,14 @@ function PaginaCompras() {
           <h3>Añadir Artículos</h3>
           <div className="form-grupo">
             <label htmlFor="articulo">Artículo:</label>
-            <select 
-              id="articulo" 
+            <select
+              id="articulo"
               value={articuloSeleccionadoId}
-              onChange={handleArticuloChange} 
-              disabled={compraReciente} 
+              onChange={handleArticuloChange}
+              disabled={compraReciente}
             >
               <option value="">-- Seleccione un Artículo --</option>
+              <option value="otros">Otros (ingreso manual)</option>
               {articulos.map(a => (
                 <option key={a.id} value={a.id}>
                   {a.nombre} (${a.precioCompra}/kg) - Stock: {(Number(a.stock) || 0).toFixed(2)}
@@ -387,6 +437,31 @@ function PaginaCompras() {
               ))}
             </select>
           </div>
+
+          {articuloSeleccionadoId === 'otros' && (
+            <>
+              <div className="form-grupo">
+                <label htmlFor="nombreManual">Nombre del material:</label>
+            <input
+              id="nombreManual"
+              type="text"
+              value={nombreArticuloManual}
+              onChange={(e) => setNombreArticuloManual(e.target.value.toUpperCase())}
+              disabled={compraReciente}
+            />
+              </div>
+              <div className="form-grupo">
+                <label htmlFor="precioManual">Precio compra:</label>
+                <input
+                  id="precioManual"
+                  type="number"
+                  value={precioArticuloManual}
+                  onChange={(e) => setPrecioArticuloManual(e.target.value)}
+                  disabled={compraReciente}
+                />
+              </div>
+            </>
+          )}
 
           <div className="imagen-preview-container">
             {imagenPreviewUrl ? (
