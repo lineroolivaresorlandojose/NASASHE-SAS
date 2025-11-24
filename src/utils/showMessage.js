@@ -7,9 +7,17 @@ const isTauriEnvironment = () =>
   typeof window !== 'undefined' && (Boolean(window.__TAURI__) || Boolean(window.__TAURI_INTERNALS__));
 
 const loadTauriMessage = async () => {
-  // Evita que Vite falle si el plugin no está instalado en el entorno web
-  const pluginModule = await import(/* @vite-ignore */ '@tauri-apps/plugin-dialog').catch(() => null);
-  return pluginModule?.message ?? null;
+  // Evitamos que Vite falle si alguno de los módulos no está disponible (web vs. Tauri)
+  const dialogPaths = ['@tauri-apps/plugin-dialog', '@tauri-apps/api/dialog'];
+
+  for (const dialogPath of dialogPaths) {
+    const pluginModule = await import(/* @vite-ignore */ dialogPath).catch(() => null);
+    if (pluginModule?.message) {
+      return pluginModule.message;
+    }
+  }
+
+  return null;
 };
 
 export async function showMessage(texto, options = {}) {
