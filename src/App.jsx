@@ -18,6 +18,7 @@ import PaginaUsuarios from './pages/PaginaUsuarios';
 
 // --- ¡PASO 3.1: AÑADE ESTA LÍNEA! ---
 import PaginaImpresion from './pages/PaginaImpresion';
+import PaginaConfiguracion from './pages/PaginaConfiguracion';
 
 
 function App() {
@@ -44,6 +45,7 @@ function App() {
         <Route path="/reportes" element={<PaginaReportes />} />
         <Route path="/ventas-menores" element={<PaginaVentasMenores />} />
         <Route path="/usuarios" element={<PaginaUsuarios />} />
+        <Route path="/configuracion" element={<PaginaConfiguracion />} />
       </Route>
 
     </Routes>
