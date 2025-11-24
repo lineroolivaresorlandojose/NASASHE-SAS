@@ -122,11 +122,57 @@ export function CajaProvider({ children }) {
   };
 
   const restarDeLaBase = async (monto) => {
-    // ... (sin cambios)
+    const montoNum = Number(monto);
+    if (Number.isNaN(montoNum) || montoNum <= 0) {
+      alert("El monto a restar debe ser mayor que cero.");
+      return;
+    }
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const cajaSnapshot = await transaction.get(cajaDocRef);
+        if (!cajaSnapshot.exists()) {
+          throw new Error("No se encontró la configuración de caja.");
+        }
+
+        const baseActual = cajaSnapshot.data().baseActual || 0;
+        if (montoNum > baseActual) {
+          throw new Error("El monto a restar supera la base actual en caja.");
+        }
+
+        const nuevaBase = baseActual - montoNum;
+        transaction.update(cajaDocRef, { baseActual: nuevaBase });
+        setBase(nuevaBase);
+      });
+    } catch (error) {
+      console.error("Error al restar de la base:", error);
+      alert(`No se pudo restar de la base: ${error.message}`);
+    }
   };
- 
+
   const sumarALaBase = async (monto) => {
-    // ... (sin cambios)
+    const montoNum = Number(monto);
+    if (Number.isNaN(montoNum) || montoNum <= 0) {
+      alert("El monto a agregar debe ser mayor que cero.");
+      return;
+    }
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const cajaSnapshot = await transaction.get(cajaDocRef);
+        if (!cajaSnapshot.exists()) {
+          throw new Error("No se encontró la configuración de caja.");
+        }
+
+        const baseActual = cajaSnapshot.data().baseActual || 0;
+        const nuevaBase = baseActual + montoNum;
+        transaction.update(cajaDocRef, { baseActual: nuevaBase });
+        setBase(nuevaBase);
+      });
+    } catch (error) {
+      console.error("Error al sumar a la base:", error);
+      alert(`No se pudo agregar a la base: ${error.message}`);
+    }
   };
 
   // --- Objeto 'value' actualizado ---
