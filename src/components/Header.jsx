@@ -49,6 +49,11 @@ function Header() {
               icono="/icons/usuarios.png"
               to="/usuarios"
             />
+            <HeaderButton
+              texto="Configuración"
+              icono="/icons/CONFIG.png"
+              to="/configuracion"
+            />
           </>
         )}
 
