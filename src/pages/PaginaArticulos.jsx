@@ -11,7 +11,7 @@ import {
   updateDoc 
 } from 'firebase/firestore';
 import './PaginaArticulos.css';
-// import { message } from "@tauri-apps/api/dialog";
+import { showMessage } from '../utils/showMessage';
 
 // 1. ¡NUEVO! Lista de todas tus imágenes en la carpeta /public/icons/
 const listaDeImagenes = [
@@ -23,8 +23,8 @@ const listaDeImagenes = [
   "HIERRO.jpg", "OTRO.jpg", "PASTA.jpg", "PERFIL.jpg", "PET.jpg", 
   "PLAQUETA_1.jfif", "PLAQUETA_2.jfif", "PLAQUETA_3.jfif", 
   "PLAQUETA_BAJA.jfif", "PLAQUETA_CELULAR.jpg", "PLAQUETA_DECO.jpg", 
-  "PLOMO.jpg", "POTE.jpg", "POTE_DE_ALUMINIO.jpg", "RADIADOR_BRONCE.jpg", 
-  "RADIADOR_COBRE.jpg", "RADIADOR_MIXTO.jpg", "SCARP_LIMPIO.jpg", 
+  "PLOMO.jpg", "POTE.jpg", "POTE_DE_ALUMINIO.jpg", "RADIADOR_ALUMINIO.jpg",
+  "RADIADOR_BRONCE.jpg", "RADIADOR_COBRE.jpg", "RADIADOR_MIXTO.jpg", "SCARP_LIMPIO.jpg",
   "SCARP_SUCIO.jpg", "SILLA.jpg", "TANQUE.jpg", "TANQUE_METALICO.jpg", 
   "VOLUMEN_HIERRO.jpg"
 ];
@@ -79,9 +79,10 @@ function PaginaArticulos() {
     const precioVentaNum = Number(nuevoPrecioVenta);
     const stockNum = Number(nuevoStock);
     if (!nuevoNombre || precioCompraNum <= 0 || precioVentaNum <= 0) {
-      await message("Por favor, completa Nombre y ambos Precios con valores válidos.", {
+      await showMessage("Por favor, completa Nombre y ambos Precios con valores válidos.", {
         title: 'Nasashe sas',
-        type: 'warning'});
+        type: 'warning'
+      });
       return;
     }
     try {
@@ -162,9 +163,10 @@ function PaginaArticulos() {
       imagenUrl: editFormData.imagenUrl || ''
     };
     if (!datosActualizados.nombre || datosActualizados.precioCompra <= 0 || datosActualizados.precioVenta <= 0) {
-      await message("Por favor, completa Nombre y ambos Precios con valores válidos.", {
+      await showMessage("Por favor, completa Nombre y ambos Precios con valores válidos.", {
         title: 'Nasashe sas',
-        type: 'warning'});
+        type: 'warning'
+      });
       return;
     }
     try {

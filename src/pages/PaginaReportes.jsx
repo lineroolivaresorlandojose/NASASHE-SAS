@@ -48,10 +48,8 @@ import GraficaBarras from '../components/GraficaBarras';
 //                        import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 
 // ¡AÑADE ESTA LÍNEA!
-import { WebviewWindow } from '@tauri-apps/api/webviewWindow';                                                                                                                     
-
-// import { message } from "@tauri-apps/api/dialog";
-//                                                const isTauriEnvironment = () => typeof window !== 'undefined' && Boolean(window.__TAURI__);
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { showMessage } from '../utils/showMessage';                                                                                                                  
 
 const isTauriEnvironment = () =>
   typeof window !== 'undefined' && (Boolean(window.__TAURI__) || Boolean(window.__TAURI_INTERNALS__));
@@ -202,7 +200,7 @@ function PaginaReportes() {
       const qVentasMenores = query(collection(db, "ventasMenores"), where("fecha", ">=", startTimestamp), where("fecha", "<=", endTimestamp));
       const ventasMenoresSnap = await getDocs(qVentasMenores);
       ventasMenoresSnap.forEach(doc => sumaVentasMenores += doc.data().total);
-    } catch (error) { console.error("Error al generar el reporte: ", error); await message("Error al generar el reporte.", {
+    } catch (error) { console.error("Error al generar el reporte: ", error); await showMessage("Error al generar el reporte.", {
       title: 'Nasashe sas',
       type: 'error' }); 
     }
@@ -228,7 +226,7 @@ function PaginaReportes() {
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach(doc => { const data = doc.data(); compras.push({ id: doc.id, ...data, fecha: data.fecha.toDate() }); });
       setHistorialCompras(compras);
-    } catch (error) { console.error("Error al buscar historial: ", error); await message("Error al buscar historial.", {
+    } catch (error) { console.error("Error al buscar historial: ", error); await showMessage("Error al buscar historial.", {
       title: 'Nasashe sas',
       type: 'warning'});
     }
@@ -249,7 +247,7 @@ function PaginaReportes() {
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach(doc => { const data = doc.data(); ventas.push({ id: doc.id, ...data, fecha: data.fecha.toDate() }); });
       setHistorialVentas(ventas);
-    } catch (error) { console.error("Error al buscar historial de ventas: ", error); await message("Error al buscar historial.", {
+    } catch (error) { console.error("Error al buscar historial de ventas: ", error); await showMessage("Error al buscar historial.", {
       title: 'Nasashe sas',
       type: 'error' 
     }); 
@@ -271,7 +269,7 @@ function PaginaReportes() {
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach(doc => { const data = doc.data(); ventas.push({ id: doc.id, ...data, fecha: data.fecha.toDate() }); });
       setHistorialVentasMenores(ventas);
-    } catch (error) { console.error("Error al buscar historial de ventas menores: ", error); await message("Error al buscar historial.", {
+    } catch (error) { console.error("Error al buscar historial de ventas menores: ", error); await showMessage("Error al buscar historial.", {
       title: 'Nasashe sas',
       type: 'error' // Puedes usar 'info', 'warning', o 'error'
     }); 
@@ -293,7 +291,7 @@ function PaginaReportes() {
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach(doc => { const data = doc.data(); gastos.push({ id: doc.id, ...data, fecha: data.fecha.toDate() }); });
       setHistorialGastos(gastos);
-    } catch (error) { console.error("Error al buscar historial de gastos: ", error); await message("Error al buscar historial." , {
+    } catch (error) { console.error("Error al buscar historial de gastos: ", error); await showMessage("Error al buscar historial." , {
       title: 'Nasashe sas',
       type: 'error'}); 
     }
@@ -485,7 +483,7 @@ function PaginaReportes() {
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach(doc => { inventarioLista.push({ id: doc.id, ...doc.data() }); });
       setInventario(inventarioLista);
-    } catch (error) { console.error("Error al cargar inventario: ", error); await message("Error al cargar inventario."), {
+    } catch (error) { console.error("Error al cargar inventario: ", error); await showMessage("Error al cargar inventario."), {
       title: 'Nasashe sas',
       type: 'error'}; 
     }
@@ -494,7 +492,7 @@ function PaginaReportes() {
 
   const handleExportarPDF = async () => {
     if (inventario.length === 0) {
-      await message("No hay datos de inventario para exportar." , {
+      await showMessage("No hay datos de inventario para exportar." , {
         title: 'Nasashe sas',
         type: 'warning'});
       return;
@@ -526,13 +524,13 @@ function PaginaReportes() {
 
     try {
       doc.save(`Reporte_Inventario_${fechaHoy}.pdf`);
-      await message('Su archivo se exportó con éxito en la carpeta de descargas.' , {
+      await showMessage('Su archivo se exportó con éxito en la carpeta de descargas.' , {
         title: 'Nasashe sas',
         type: 'info'});
     } 
     catch (error) {
       console.error('Error al exportar el inventario a PDF:', error);
-      await message('Ocurrió un error al exportar el PDF. Por favor, inténtalo de nuevo.' , {
+      await showMessage('Ocurrió un error al exportar el PDF. Por favor, inténtalo de nuevo.' , {
         title: 'Nasashe sas',
         type: 'error'});
     }
@@ -544,7 +542,7 @@ function PaginaReportes() {
       : inventario;
 
     if (!itemsParaImprimir || itemsParaImprimir.length === 0) {
-      await message('No hay datos de inventario para imprimir.' , {
+      await showMessage('No hay datos de inventario para imprimir.' , {
         title: 'Nasashe sas',
         type: 'warning'});
       return;
@@ -606,7 +604,7 @@ function PaginaReportes() {
 
   const handleImprimirInventario = async () => {
     if (inventario.length === 0) {
-      await message('No hay datos de inventario para imprimir.', {
+      await showMessage('No hay datos de inventario para imprimir.', {
         title: 'Nasashe sas',
         type: 'error'});
       return;
@@ -678,7 +676,7 @@ function PaginaReportes() {
 
     } catch (error) {
       console.error("Error al generar análisis: ", error);
-      await message("Error al generar análisis.", {
+      await showMessage("Error al generar análisis.", {
         title: 'Error de analisis',
         type: 'error'});
     }
