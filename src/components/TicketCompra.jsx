@@ -4,13 +4,34 @@ import React from 'react'; // ¡Quitamos 'forwardRef'!
 import Barcode from 'react-barcode';
 import './TicketCompra.css';
 
+const normalizarFechaCompra = (valorFecha) => {
+  if (!valorFecha) {
+    return new Date();
+  }
+
+  if (valorFecha instanceof Date) {
+    return valorFecha;
+  }
+
+  if (typeof valorFecha === 'string') {
+    const fechaParseada = new Date(valorFecha);
+    return Number.isNaN(fechaParseada.getTime()) ? new Date() : fechaParseada;
+  }
+
+  if (typeof valorFecha === 'object' && typeof valorFecha.toDate === 'function') {
+    return valorFecha.toDate();
+  }
+
+  return new Date();
+};
+
 // No usamos forwardRef
-function TicketCompra({ compraData, usuario }) {
-  
-  if (!compraData) return null; 
+  function TicketCompra({ compraData, usuario }) {
 
-  const fecha = compraData.fecha.toDate().toLocaleString('es-CO');
+  if (!compraData) return null;
 
+  const fecha = normalizarFechaCompra(compraData.fecha).toLocaleString('es-CO');
+  const consecutivo = compraData.consecutivo || 'SIN-CONSECUTIVO';
   // No necesitamos 'ref' aquí
   return (
     <div className="ticket-container">
@@ -56,7 +77,7 @@ function TicketCompra({ compraData, usuario }) {
             {compraData.items.map((item, index) => (
               <tr key={index}>
                 <td>{item.nombre}</td>
-                <td className="col-cant">{item.cantidad}</td>
+                <td className="col-cant">{(Number(item.cantidad) || 0).toFixed(2)}</td>
                 <td className="col-prec">${item.precioCompra}</td>
                 <td className="col-tot">${item.subtotal.toLocaleString('es-CO')}</td>
               </tr>

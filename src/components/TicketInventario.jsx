@@ -49,7 +49,7 @@ function TicketInventario({ inventarioData, usuario }) {
             {inventarioData.items.map((item) => (
               <tr key={item.id}>
                 <td className="col-mat">{item.nombre}</td>
-                <td className="col-tot">{Number(item.stock || 0).toLocaleString('es-CO')}</td>
+                <td className="col-tot">{(Number(item.stock) || 0).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
