@@ -15,14 +15,14 @@ import { showMessage } from '../utils/showMessage';
 
 // 1. ¡NUEVO! Lista de todas tus imágenes en la carpeta /public/icons/
 const listaDeImagenes = [
-  "ACERO.jpg", "ALUMINIO.jpg", "ANTIMONIO.jpg", "ARCHIVO.jfif", 
+  "ACERO.jpg", "ALUMINIO.jpg", "ANTIMONIO.jpg", "ARCHIVO.jpg", 
   "BATERIA_1_GRUPO.jpg", "BATERIA_2_GRUPO.jpg", "BATERIA_3_GRUPO.jpg", 
   "BATERIA_4_GRUPO.jpg", "BATERIA_5_GRUPO.jpg", "BATERIA_7_GRUPO.jpg", 
   "BATERIA_8_GRUPO.jpg", "BATERIA_PEQUEÑA.jpg", "BRONCE.jpg", 
   "CANASTA.jpg", "CARTON.jpg", "COBRE.jpg", "COBRE_CABLE.jpg", 
   "HIERRO.jpg", "OTRO.jpg", "PASTA.jpg", "PERFIL.jpg", "PET.jpg", 
-  "PLAQUETA_1.jfif", "PLAQUETA_2.jfif", "PLAQUETA_3.jfif", 
-  "PLAQUETA_BAJA.jfif", "PLAQUETA_CELULAR.jpg", "PLAQUETA_DECO.jpg", 
+  "PLAQUETA_1.jpg", "PLAQUETA_2.jpg", "PLAQUETA_3.jpg", 
+  "PLAQUETA_BAJA.jpg", "PLAQUETA_CELULAR.jpg", "PLAQUETA_DECO.jpg", 
   "PLOMO.jpg", "POTE.jpg", "POTE_DE_ALUMINIO.jpg", "RADIADOR_ALUMINIO.jpg",
   "RADIADOR_BRONCE.jpg", "RADIADOR_COBRE.jpg", "RADIADOR_MIXTO.jpg", "SCARP_LIMPIO.jpg",
   "SCARP_SUCIO.jpg", "SILLA.jpg", "TANQUE.jpg", "TANQUE_METALICO.jpg", 
