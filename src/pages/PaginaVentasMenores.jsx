@@ -30,9 +30,9 @@ const descargarTxt = (contenido, nombreArchivo) => {
 };
 
 function PaginaVentasMenores() {
-  
-  // 1. ¡EL ARREGLO! Traemos 'setBase' en lugar de 'sumarALaBase'
-  const { userProfile, base, setBase } = useCaja(); 
+
+  // 1. ¡EL ARREGLO! Traemos 'setBase' en lugar de 'sumarALaBase'␊
+  const { userProfile, base, setBase } = useCaja();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // --- (Estados del formulario y de la venta, sin cambios) ---
@@ -42,7 +42,10 @@ function PaginaVentasMenores() {
   const [itemPrecio, setItemPrecio] = useState('');
   const [itemsVenta, setItemsVenta] = useState([]);
   const [totalVenta, setTotalVenta] = useState(0);
-  const [ventaReciente, setVentaReciente] = useState(null); 
+  const [ventaReciente, setVentaReciente] = useState(null);
+  const [editingItemId, setEditingItemId] = useState(null);
+
+  const generarIdLocal = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
 
   useEffect(() => {
     const nuevoTotal = itemsVenta.reduce((acc, item) => acc + item.subtotal, 0);
@@ -63,6 +66,7 @@ function PaginaVentasMenores() {
       ...prevState,
       {
         id: new Date().getTime(),
+        localId: generarIdLocal(),
         descripcion: itemDescripcion.toUpperCase(),
         cantidad: cantNum,
         precio: precioNum,
@@ -72,6 +76,43 @@ function PaginaVentasMenores() {
     setItemDescripcion('');
     setItemCantidad('');
     setItemPrecio('');
+  };
+
+  const handleAnularItem = (localId) => {
+    if (window.confirm('¿Desea eliminar este item de la prefactura?')) {
+      setItemsVenta(prev => prev.filter(item => item.localId !== localId));
+      setEditingItemId(prev => (prev === localId ? null : prev));
+    }
+  };
+
+  const handleEditarItem = (localId) => {
+    setEditingItemId(prev => (prev === localId ? null : localId));
+  };
+
+  const handleActualizarCantidad = (e, localId) => {
+    const nuevaCantidad = Number(e.target.value);
+    if (nuevaCantidad <= 0) return;
+
+    setItemsVenta(prevState =>
+      prevState.map(item =>
+        item.localId === localId
+          ? { ...item, cantidad: nuevaCantidad, subtotal: nuevaCantidad * item.precio }
+          : item
+      )
+    );
+  };
+
+  const handleActualizarPrecio = (e, localId) => {
+    const nuevoPrecio = Number(e.target.value);
+    if (nuevoPrecio <= 0) return;
+
+    setItemsVenta(prevState =>
+      prevState.map(item =>
+        item.localId === localId
+          ? { ...item, precio: nuevoPrecio, subtotal: nuevoPrecio * item.cantidad }
+          : item
+      )
+    );
   };
 
   // 2. ¡LÓGICA DE GUARDADO CORREGIDA!
@@ -282,6 +323,7 @@ function PaginaVentasMenores() {
                 <th>Cant.</th>
                 <th>Precio</th>
                 <th>Subtotal</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -291,11 +333,50 @@ function PaginaVentasMenores() {
                 </tr>
               ) : (
                 (ventaReciente ? ventaReciente.items : itemsVenta).map((item) => (
-                  <tr key={item.id}>
+                  <tr key={item.localId || item.id}>
                     <td>{item.descripcion}</td>
-                    <td>{item.cantidad}</td>
-                    <td>${item.precio}</td>
+                    <td>
+                      {editingItemId === item.localId ? (
+                        <input
+                          type="number"
+                          value={item.cantidad}
+                          onChange={(e) => handleActualizarCantidad(e, item.localId)}
+                          style={{width: '70px', padding: '3px'}}
+                          autoFocus
+                        />
+                      ) : (
+                        item.cantidad
+                      )}
+                    </td>
+                    <td>
+                      {editingItemId === item.localId ? (
+                        <input
+                          type="number"
+                          value={item.precio}
+                          onChange={(e) => handleActualizarPrecio(e, item.localId)}
+                          style={{width: '80px', padding: '3px'}}
+                        />
+                      ) : (
+                        `$${item.precio}`
+                      )}
+                    </td>
                     <td>${item.subtotal.toLocaleString('es-CO')}</td>
+                    <td className="prefactura-acciones">
+                      <button
+                        className="btn-pre-editar"
+                        onClick={() => handleEditarItem(item.localId)}
+                        disabled={ventaReciente}
+                      >
+                        {editingItemId === item.localId ? 'Listo' : 'Editar'}
+                      </button>
+                      <button
+                        className="btn-pre-borrar"
+                        onClick={() => handleAnularItem(item.localId)}
+                        disabled={ventaReciente}
+                      >
+                        Anular
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}

@@ -222,7 +222,7 @@ function PaginaCompras() {
 
   // 3. ¡FUNCIÓN EDITAR ITEM! (Cambia al modo edición)
   const handleEditarItem = (localId) => {
-    setEditingItemId(localId);
+    setEditingItemId(prev => (prev === localId ? null : localId));
   };
 
   // 4. ¡FUNCIÓN ACTUALIZAR CANTIDAD! (Se dispara al cambiar el input)
@@ -230,11 +230,26 @@ function PaginaCompras() {
     const nuevaCantidad = Number(e.target.value);
     if (nuevaCantidad <= 0) return;
 
-    setItemsCompra(prevState => 
+    setItemsCompra(prevState =>
       prevState.map(item => {
         if (item.localId === localId) {
           const nuevoSubtotal = nuevaCantidad * item.precioCompra;
           return { ...item, cantidad: nuevaCantidad, subtotal: nuevoSubtotal };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleActualizarPrecio = (e, localId) => {
+    const nuevoPrecio = Number(e.target.value);
+    if (nuevoPrecio <= 0) return;
+
+    setItemsCompra(prevState =>
+      prevState.map(item => {
+        if (item.localId === localId) {
+          const nuevoSubtotal = item.cantidad * nuevoPrecio;
+          return { ...item, precioCompra: nuevoPrecio, subtotal: nuevoSubtotal };
         }
         return item;
       })
@@ -512,28 +527,38 @@ function PaginaCompras() {
                     {/* Celda de Cantidad con lógica de edición */}
                     <td>
                       {editingItemId === item.localId ? (
-                        <input 
-                          type="number" 
-                          value={item.cantidad} 
+                        <input
+                          type="number"
+                          value={item.cantidad}
                           onChange={(e) => handleActualizarCantidad(e, item.localId)}
-                          onBlur={() => setEditingItemId(null)} // Sale de la edición al perder foco
                           autoFocus
-                          style={{width: '60px', padding: '3px'}}
+                          style={{width: '70px', padding: '3px'}}
                         />
                       ) : (
                         (Number(item.cantidad) || 0).toFixed(2)
                       )}
                     </td>
-                    <td>${item.precioCompra}</td>
+                    <td>
+                      {editingItemId === item.localId ? (
+                        <input
+                          type="number"
+                          value={item.precioCompra}
+                          onChange={(e) => handleActualizarPrecio(e, item.localId)}
+                          style={{width: '80px', padding: '3px'}}
+                        />
+                      ) : (
+                        `$${item.precioCompra}`
+                      )}
+                    </td>
                     <td>${item.subtotal.toLocaleString('es-CO')}</td>
                     {/* Botones de acción */}
                     <td className="prefactura-acciones">
-                      <button 
-                        className="btn-pre-editar" 
+                      <button
+                        className="btn-pre-editar"
                         onClick={() => handleEditarItem(item.localId)}
                         disabled={compraReciente}
                       >
-                        Editar
+                        {editingItemId === item.localId ? 'Listo' : 'Editar'}
                       </button>
                       <button 
                         className="btn-pre-borrar" 

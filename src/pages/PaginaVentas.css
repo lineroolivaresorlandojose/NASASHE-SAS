@@ -128,3 +128,14 @@
   color: #28a745;
   margin-top: 15px;
 }
+
+/* --- ACCIONES EN PREFRACTURA --- */
+.prefactura-acciones {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-pre-editar { background-color: #007bff; }
+.btn-pre-editar:disabled { background-color: #ccc; }
+.btn-pre-borrar { background-color: #dc3545; }
+.btn-pre-borrar:disabled { background-color: #ccc; }
