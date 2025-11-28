@@ -73,11 +73,13 @@ function PaginaCompras() {
     // onSnapshot crea el listener y "calienta" el caché
     const unsubscribe = onSnapshot(articulosRef, 
       (querySnapshot) => {
-        const articulosLista = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        
+        const articulosLista = querySnapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }))
+          .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
         setArticulos(articulosLista); // (Tu estado para la lista de artículos)
         // setLoading(false);
 
@@ -601,5 +603,6 @@ function PaginaCompras() {
     </div>
   );
 }
+
 
 export default PaginaCompras;
