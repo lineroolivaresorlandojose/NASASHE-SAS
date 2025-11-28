@@ -121,6 +121,12 @@
 .btn-imprimir-ticket:hover {
   background-color: #0056b3;
 }
+.btn-descargar-ticket {
+  background-color: #17a2b8;
+}
+.btn-descargar-ticket:hover {
+  background-color: #138496;
+}
 .btn-nueva-venta {
   background-color: #6c757d; /* Gris */
 }
