@@ -362,7 +362,6 @@ function PaginaCompras() {
     if (!isTauriEnvironment()) {
       // --- Lógica de Navegador (la que tenías) ---
       printCompraEnNavegador(compraReciente);
-      handleDescargarYLlimpiar(); // Descarga el TXT después de imprimir
     } else {
       // --- Lógica de Tauri (la nueva) ---
       localStorage.setItem('ticketData', JSON.stringify(compraReciente));
@@ -373,22 +372,23 @@ function PaginaCompras() {
       const webview = new WebviewWindow(label, {
         url: '/imprimir',
         title: `Ticket ${compraReciente.consecutivo}`,
-        width: 310, 
+        width: 310,
         height: 600,
       });
 
-      webview.once('tauri://created', () => {
-        console.log('Ventana de impresión (compra) creada');
-        // Limpiamos el formulario una vez que la ventana se crea
-        handleRegistrarNueva();
-      });
       webview.once('tauri://error', (e) => {
         console.error('Error al crear ventana de impresión:', e);
         // Fallback al método de navegador si Tauri falla
         printCompraEnNavegador(compraReciente);
-        handleDescargarYLlimpiar();
       });
     }
+  };
+
+  const handleDescargarTicket = () => {
+    if (!compraReciente) return;
+
+    const textoTicket = generarTextoTicketCompra(compraReciente, userProfile);
+    descargarTxt(textoTicket, compraReciente.consecutivo);
   };
 
   // Función para limpiar el formulario
@@ -397,16 +397,11 @@ function PaginaCompras() {
     setTotalCompra(0);
     setNombreReciclador('');
     setCompraReciente(null);
-  };
-
-  // Función para descargar el TXT y luego limpiar
-  const handleDescargarYLlimpiar = () => {
-    if (!compraReciente) return;
-    
-    const textoTicket = generarTextoTicketCompra(compraReciente, userProfile);
-    descargarTxt(textoTicket, compraReciente.consecutivo);
-    
-    handleRegistrarNueva(); // Llama a la función que limpia
+    setArticuloSeleccionadoId('');
+    setNombreArticuloManual('');
+    setPrecioArticuloManual('');
+    setCantidad('');
+    setImagenPreviewUrl('');
   };
   
 
@@ -583,7 +578,10 @@ function PaginaCompras() {
               <>
                 <p className="compra-exitosa">¡Compra {compraReciente.consecutivo} guardada!</p>
                 <button type="button" onClick={handleImprimir} className="btn-imprimir-ticket">
-                  Imprimir Ticket (y Descargar)
+                  Imprimir Ticket
+                </button>
+                <button type="button" onClick={handleDescargarTicket} className="btn-descargar-ticket">
+                  Descargar Ticket
                 </button>
                 <button type="button" onClick={handleRegistrarNueva} className="btn-nueva-compra">
                   Registrar Nueva Compra
@@ -603,6 +601,5 @@ function PaginaCompras() {
     </div>
   );
 }
-
 
 export default PaginaCompras;
