@@ -204,7 +204,6 @@ function PaginaVentasMenores() {
 
     if (!isTauriEnvironment()) {
       printVentaMenorEnNavegador(ventaReciente);
-      handleDescargarYLlimpiar();
     } else {
       localStorage.setItem('ticketData', JSON.stringify(ventaReciente));
       localStorage.setItem('ticketUser', JSON.stringify(userProfile));
@@ -214,32 +213,26 @@ function PaginaVentasMenores() {
       const webview = new WebviewWindow(label, {
         url: '/imprimir',
         title: `Ticket ${ventaReciente.consecutivo}`,
-        width: 310, 
+        width: 310,
         height: 600,
       });
 
-      webview.once('tauri://created', () => {
-        handleRegistrarNuevaVenta();
-      });
       webview.once('tauri://error', (e) => {
         console.error('Error al crear ventana de impresión:', e);
         printVentaMenorEnNavegador(ventaReciente);
-        handleDescargarYLlimpiar();
       });
     }
   };
 
-  const handleRegistrarNuevaVenta = () => {
+  const handleDescargarTicket = () => {
     if (!ventaReciente) return;
-    handleDescargarYLlimpiar();
+    if (isTauriEnvironment()) return;
+
+    const textoTicket = generarTextoTicketVentaMenor(ventaReciente, userProfile);
+    descargarTxt(textoTicket, ventaReciente.consecutivo);
   };
 
-  const handleDescargarYLlimpiar = () => {
-    if (ventaReciente && !isTauriEnvironment()) {
-      const textoTicket = generarTextoTicketVentaMenor(ventaReciente, userProfile);
-      descargarTxt(textoTicket, ventaReciente.consecutivo);
-    }
-
+  const handleRegistrarNuevaVenta = () => {
     setItemsVenta([]);
     setTotalVenta(0);
     setNombreCliente('');
@@ -395,8 +388,11 @@ function PaginaVentasMenores() {
                 <button type="button" onClick={handleImprimir} className="btn-imprimir-ticket">
                   Imprimir Ticket
                 </button>
+                <button type="button" onClick={handleDescargarTicket} className="btn-descargar-ticket">
+                  Descargar Ticket
+                </button>
                 <button type="button" onClick={handleRegistrarNuevaVenta} className="btn-nueva-venta">
-                  Registrar Nueva Venta (y Descargar TXT)
+                  Registrar Nueva Venta
                 </button>
               </>
             ) : (
