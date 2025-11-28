@@ -56,10 +56,12 @@ function PaginaArticulos() {
     setLoading(true);
     try {
       const querySnapshot = await getDocs(collection(db, "articulos"));
-      const articulosLista = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const articulosLista = querySnapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre));
       setArticulos(articulosLista);
       setLoading(false);
     } catch (error) {
@@ -310,5 +312,6 @@ function PaginaArticulos() {
     </div>
   );
 }
+
 
 export default PaginaArticulos;
