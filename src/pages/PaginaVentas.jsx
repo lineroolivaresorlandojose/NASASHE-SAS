@@ -2,13 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { 
-  collection, 
-  getDocs, 
-  writeBatch, 
+import {
+  collection,
+  writeBatch,
   doc,
   Timestamp,
-  runTransaction 
+  onSnapshot
 } from 'firebase/firestore';
 import { useCaja } from '../context/CajaContext';
 import './PaginaVentas.css'; // ¡CSS de Ventas!
@@ -34,7 +33,7 @@ const descargarTxt = (contenido, nombreArchivo) => {
 };
 
 function PaginaVentas() {
-  const { userProfile, base } = useCaja(); // Traemos la base (solo para verla)
+  const { userProfile, base, consecutivosData } = useCaja(); // Traemos la base (solo para verla)
   
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,30 +56,38 @@ function PaginaVentas() {
   const generarIdLocal = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
 
   // --- Cargar Proveedores y Artículos ---
-  const fetchDatosMaestros = async () => {
+  useEffect(() => {
     setLoading(true);
-    try {
-      const proveedoresSnap = await getDocs(collection(db, "proveedores"));
-      const proveedoresLista = proveedoresSnap.docs.map(doc => ({
+
+    const proveedoresRef = collection(db, "proveedores");
+    const articulosRef = collection(db, "articulos");
+
+    const unsubProveedores = onSnapshot(proveedoresRef, (querySnap) => {
+      const proveedoresLista = querySnap.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }));
       setProveedores(proveedoresLista);
+    }, (error) => {
+      console.error("Error al cargar proveedores:", error);
+    });
 
-      const articulosSnap = await getDocs(collection(db, "articulos"));
-      const articulosLista = articulosSnap.docs.map(doc => ({
+    const unsubArticulos = onSnapshot(articulosRef, (querySnap) => {
+      const articulosLista = querySnap.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }));
       setArticulos(articulosLista);
-    } catch (error) {
-      console.error("Error al cargar datos: ", error);
-    }
-    setLoading(false);
-  };
-  
-  useEffect(() => {
-    fetchDatosMaestros();
+      setLoading(false);
+    }, (error) => {
+      console.error("Error al cargar artículos:", error);
+      setLoading(false);
+    });
+
+    return () => {
+      unsubProveedores();
+      unsubArticulos();
+    };
   }, []);
 
   // --- Calcular Total ---
@@ -196,57 +203,51 @@ function PaginaVentas() {
     let nuevoConsecutivoStr = "";
 
     try {
-      const nuevaVentaRef = doc(collection(db, "ventas"));
       const proveedorObj = proveedores.find(p => p.id === proveedorSeleccionadoId);
+      const ultimoNum = consecutivosData?.ventas || 0;
+      const nuevoNum = ultimoNum + 1;
+      nuevoConsecutivoStr = formatConsecutivo(nuevoNum, "FAV");
 
-      await runTransaction(db, async (transaction) => {
-        // --- 1. LEER TODO ---
-        const consecRef = doc(db, "configuracion", "consecutivos");
-        const consecDoc = await transaction.get(consecRef);
-        if (!consecDoc.exists()) throw new Error("Consecutivos no encontrados");
-        
-        const articulosRefs = itemsVenta.map(item => doc(db, "articulos", item.articuloId));
-        const articulosDocs = await Promise.all(articulosRefs.map(ref => transaction.get(ref)));
+      const ventaData = {
+        consecutivo: nuevoConsecutivoStr,
+        proveedor: {
+          id: proveedorObj.id,
+          nombre: proveedorObj.nombre,
+          nit: proveedorObj.nit,
+        },
+        items: itemsVenta,
+        total: totalVenta,
+        fecha: Timestamp.now(),
+        usuario: userProfile?.nombre || 'SISTEMA',
+      };
+      ventaDataParaTicket = ventaData;
 
-        // --- 2. CALCULAR ---
-        const ultimoNum = consecDoc.data().ventas; // <-- Consecutivo de VENTAS
-        const nuevoNum = ultimoNum + 1;
-        nuevoConsecutivoStr = formatConsecutivo(nuevoNum, "FAV"); // <-- Prefijo FAV
-        
-        const ventaData = {
-          consecutivo: nuevoConsecutivoStr,
-          proveedor: { // Guardamos los datos del cliente
-            id: proveedorObj.id,
-            nombre: proveedorObj.nombre,
-            nit: proveedorObj.nit
-          },
-          items: itemsVenta,
-          total: totalVenta,
-          fecha: Timestamp.now(),
-          usuario: userProfile?.nombre || 'SISTEMA'
-        };
-        ventaDataParaTicket = ventaData;
+      const batch = writeBatch(db);
+      const nuevaVentaRef = doc(collection(db, "ventas"));
+      const consecRef = doc(db, "configuracion", "consecutivos");
 
-        // --- 3. ESCRIBIR TODO ---
-        transaction.set(nuevaVentaRef, ventaData);
-        transaction.update(consecRef, { ventas: nuevoNum }); // <-- Actualiza 'ventas'
+      batch.set(nuevaVentaRef, ventaData);
+      batch.update(consecRef, { ventas: nuevoNum });
 
-        // ¡RESTAR el stock!
-        articulosDocs.forEach((artDoc, index) => {
-          if (!artDoc.exists()) throw new Error(`Artículo ${itemsVenta[index].nombre} no encontrado`);
-          
-          const stockActual = artDoc.data().stock || 0;
-          const nuevoStock = stockActual - itemsVenta[index].cantidad;
-          if (nuevoStock < 0) throw new Error(`Stock insuficiente para ${itemsVenta[index].nombre}`);
-          
-          transaction.update(artDoc.ref, { stock: nuevoStock });
-        });
+      itemsVenta.forEach(item => {
+        const articuloCompleto = articulos.find(a => a.id === item.articuloId);
+        if (!articuloCompleto) {
+          throw new Error(`Artículo ${item.nombre} no encontrado en caché.`);
+        }
+
+        const stockActual = articuloCompleto.stock || 0;
+        const nuevoStock = stockActual - item.cantidad;
+        if (nuevoStock < 0) {
+          throw new Error(`Stock insuficiente para ${item.nombre}`);
+        }
+
+        const articuloRef = doc(db, "articulos", item.articuloId);
+        batch.update(articuloRef, { stock: nuevoStock });
       });
 
-      // --- 4. TRANSACCIÓN EXITOSA ---
-      await fetchDatosMaestros(); // Refresca el stock en los dropdowns
+      await batch.commit();
 
-      setVentaReciente(ventaDataParaTicket); 
+      setVentaReciente(ventaDataParaTicket);
       setProveedorSeleccionadoId('');
       // ¡No limpiamos itemsVenta aún!
 
@@ -256,7 +257,6 @@ function PaginaVentas() {
     }
     setIsSubmitting(false);
   };
-
   // --- Lógica de Impresión/Descarga (¡ACTUALIZADA!) ---
 
   const printVentaEnNavegador = (ventaData) => {
@@ -276,7 +276,6 @@ function PaginaVentas() {
 
     if (!isTauriEnvironment()) {
       printVentaEnNavegador(ventaReciente);
-      handleDescargarYLlimpiar();
     } else {
       localStorage.setItem('ticketData', JSON.stringify(ventaReciente));
       localStorage.setItem('ticketUser', JSON.stringify(userProfile));
@@ -286,32 +285,26 @@ function PaginaVentas() {
       const webview = new WebviewWindow(label, {
         url: '/imprimir',
         title: `Ticket ${ventaReciente.consecutivo}`,
-        width: 310, 
+        width: 310,
         height: 600,
       });
 
-      webview.once('tauri://created', () => {
-        handleRegistrarNuevaVenta();
-      });
       webview.once('tauri://error', (e) => {
         console.error('Error al crear ventana de impresión:', e);
         printVentaEnNavegador(ventaReciente);
-        handleDescargarYLlimpiar();
       });
     }
   };
 
-  const handleRegistrarNuevaVenta = () => {
-    if (!ventaReciente && itemsVenta.length === 0) return;
-    handleDescargarYLlimpiar(); // Llama a la función que limpia y descarga
+  const handleDescargarTicket = () => {
+    if (!ventaReciente) return;
+    if (isTauriEnvironment()) return;
+
+    const textoTicket = generarTextoTicketVenta(ventaReciente, userProfile);
+    descargarTxt(textoTicket, ventaReciente.consecutivo);
   };
 
-  const handleDescargarYLlimpiar = () => {
-    if (ventaReciente && !isTauriEnvironment()) { // Solo descarga TXT en navegador
-      const textoTicket = generarTextoTicketVenta(ventaReciente, userProfile);
-      descargarTxt(textoTicket, ventaReciente.consecutivo);
-    }
-
+  const handleRegistrarNuevaVenta = () => {
     setItemsVenta([]);
     setTotalVenta(0);
     setProveedorSeleccionadoId('');
@@ -469,6 +462,9 @@ function PaginaVentas() {
                 <p className="venta-exitosa">¡Venta {ventaReciente.consecutivo} guardada!</p>
                 <button type="button" onClick={handleImprimir} className="btn-imprimir-ticket">
                   Imprimir Ticket
+                </button>
+                <button type="button" onClick={handleDescargarTicket} className="btn-descargar-ticket">
+                  Descargar Ticket
                 </button>
                 <button type="button" onClick={handleRegistrarNuevaVenta} className="btn-nueva-venta">
                   Registrar Nueva Venta
