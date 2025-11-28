@@ -146,6 +146,8 @@
 .btn-guardar-compra:disabled { background-color: #ccc; }
 .btn-imprimir-ticket { background-color: #007bff; text-decoration: none; text-align: center; }
 .btn-imprimir-ticket:hover { background-color: #0056b3; }
+.btn-descargar-ticket { background-color: #17a2b8; }
+.btn-descargar-ticket:hover { background-color: #138496; }
 .btn-nueva-compra { background-color: #6c757d; }
 
 .compra-exitosa {
