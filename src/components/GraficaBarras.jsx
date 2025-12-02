@@ -22,7 +22,7 @@ ChartJS.register(
   Legend
 );
 
-function GraficaBarras({ chartData, titulo }) {
+function GraficaBarras({ chartData, titulo, useLogScale = false }) {
   
   // 2. Opciones de la gráfica
   const options = {
@@ -38,6 +38,30 @@ function GraficaBarras({ chartData, titulo }) {
         font: {
           size: 18
         }
+      },
+    },
+    scales: {
+      x: {
+        ticks: {
+          autoSkip: false,
+          maxRotation: 45,
+        },
+      },
+      y: {
+        type: useLogScale ? 'logarithmic' : 'linear',
+        beginAtZero: !useLogScale,
+        min: useLogScale ? 0.1 : undefined,
+        title: {
+          display: true,
+          text: useLogScale ? 'Escala logarítmica (kg/und)' : 'Cantidad (kg/und)',
+        },
+        ticks: useLogScale
+          ? {
+              callback: (value) => Number(value).toLocaleString('es-CO'),
+            }
+          : {
+              precision: 0,
+            },
       },
     },
   };
