@@ -154,11 +154,13 @@ function PaginaReportes() {
   //                                });
   
 
+  
   // --- Lógica de Impresión Inventario ---
   const inventarioPrintRef = useRef(null);
 
   // --- Estado Análisis ---
   const [analisisData, setAnalisisData] = useState(null);
+  const [usarEscalaLogaritmica, setUsarEscalaLogaritmica] = useState(false);
 
 
 
@@ -669,6 +671,7 @@ function PaginaReportes() {
               backgroundColor: 'rgba(220, 53, 69, 0.6)',
               borderColor: 'rgba(220, 53, 69, 1)',
               borderWidth: 1,
+              minBarLength: 8,
             },
           ],
         });
@@ -985,6 +988,14 @@ function PaginaReportes() {
               <input type="date" id="fecha-inicio" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
               <label htmlFor="fecha-fin">Hasta:</label>
               <input type="date" id="fecha-fin" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
+              <label className="checkbox-inline" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="checkbox"
+                  checked={usarEscalaLogaritmica}
+                  onChange={(e) => setUsarEscalaLogaritmica(e.target.checked)}
+                />
+                Usar escala logarítmica
+              </label>
               <button onClick={handleGenerateAnalisis} className="btn-generar" disabled={loading}>
                 {loading ? "Generando..." : "Generar Análisis"}
               </button>
@@ -997,9 +1008,10 @@ function PaginaReportes() {
                 <p>Generando gráfica...</p>
               ) : analisisData ? (
                 (analisisData.labels.length > 0 ? (
-                  <GraficaBarras 
-                    chartData={analisisData} 
-                    titulo={`Materiales Comprados (${fechaInicio} a ${fechaFin})`} 
+                  <GraficaBarras
+                    chartData={analisisData}
+                    titulo={`Materiales Comprados (${fechaInicio} a ${fechaFin})`}
+                    useLogScale={usarEscalaLogaritmica}
                   />
                 ) : (
                   <p>No se encontraron datos de compras para este rango de fechas.</p>
@@ -1025,5 +1037,6 @@ function PaginaReportes() {
     </div>
   );
 }
+
 
 export default PaginaReportes;
