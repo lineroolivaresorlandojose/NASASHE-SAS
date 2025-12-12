@@ -602,4 +602,7 @@ function PaginaCompras() {
   );
 }
 
+
 export default PaginaCompras;
+
+

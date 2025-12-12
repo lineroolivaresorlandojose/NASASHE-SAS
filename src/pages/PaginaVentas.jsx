@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import {
-  collection,
-  writeBatch,
+import { 
+  collection, 
+  getDocs, 
+  writeBatch, 
   doc,
   Timestamp,
-  onSnapshot
+  runTransaction 
 } from 'firebase/firestore';
 import { useCaja } from '../context/CajaContext';
 import './PaginaVentas.css'; // ¡CSS de Ventas!
@@ -33,7 +34,7 @@ const descargarTxt = (contenido, nombreArchivo) => {
 };
 
 function PaginaVentas() {
-  const { userProfile, base, consecutivosData } = useCaja(); // Traemos la base (solo para verla)
+  const { userProfile, base } = useCaja(); // Traemos la base (solo para verla)
   
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,38 +57,30 @@ function PaginaVentas() {
   const generarIdLocal = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
 
   // --- Cargar Proveedores y Artículos ---
-  useEffect(() => {
+  const fetchDatosMaestros = async () => {
     setLoading(true);
-
-    const proveedoresRef = collection(db, "proveedores");
-    const articulosRef = collection(db, "articulos");
-
-    const unsubProveedores = onSnapshot(proveedoresRef, (querySnap) => {
-      const proveedoresLista = querySnap.docs.map(doc => ({
+    try {
+      const proveedoresSnap = await getDocs(collection(db, "proveedores"));
+      const proveedoresLista = proveedoresSnap.docs.map(doc => ({
         id: doc.id,
-        ...doc.data(),
+        ...doc.data()
       }));
       setProveedores(proveedoresLista);
-    }, (error) => {
-      console.error("Error al cargar proveedores:", error);
-    });
 
-    const unsubArticulos = onSnapshot(articulosRef, (querySnap) => {
-      const articulosLista = querySnap.docs.map(doc => ({
+      const articulosSnap = await getDocs(collection(db, "articulos"));
+      const articulosLista = articulosSnap.docs.map(doc => ({
         id: doc.id,
-        ...doc.data(),
+        ...doc.data()
       }));
       setArticulos(articulosLista);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error al cargar artículos:", error);
-      setLoading(false);
-    });
-
-    return () => {
-      unsubProveedores();
-      unsubArticulos();
-    };
+    } catch (error) {
+      console.error("Error al cargar datos: ", error);
+    }
+    setLoading(false);
+  };
+  
+  useEffect(() => {
+    fetchDatosMaestros();
   }, []);
 
   // --- Calcular Total ---
@@ -203,51 +196,57 @@ function PaginaVentas() {
     let nuevoConsecutivoStr = "";
 
     try {
-      const proveedorObj = proveedores.find(p => p.id === proveedorSeleccionadoId);
-      const ultimoNum = consecutivosData?.ventas || 0;
-      const nuevoNum = ultimoNum + 1;
-      nuevoConsecutivoStr = formatConsecutivo(nuevoNum, "FAV");
-
-      const ventaData = {
-        consecutivo: nuevoConsecutivoStr,
-        proveedor: {
-          id: proveedorObj.id,
-          nombre: proveedorObj.nombre,
-          nit: proveedorObj.nit,
-        },
-        items: itemsVenta,
-        total: totalVenta,
-        fecha: Timestamp.now(),
-        usuario: userProfile?.nombre || 'SISTEMA',
-      };
-      ventaDataParaTicket = ventaData;
-
-      const batch = writeBatch(db);
       const nuevaVentaRef = doc(collection(db, "ventas"));
-      const consecRef = doc(db, "configuracion", "consecutivos");
+      const proveedorObj = proveedores.find(p => p.id === proveedorSeleccionadoId);
 
-      batch.set(nuevaVentaRef, ventaData);
-      batch.update(consecRef, { ventas: nuevoNum });
+      await runTransaction(db, async (transaction) => {
+        // --- 1. LEER TODO ---
+        const consecRef = doc(db, "configuracion", "consecutivos");
+        const consecDoc = await transaction.get(consecRef);
+        if (!consecDoc.exists()) throw new Error("Consecutivos no encontrados");
+        
+        const articulosRefs = itemsVenta.map(item => doc(db, "articulos", item.articuloId));
+        const articulosDocs = await Promise.all(articulosRefs.map(ref => transaction.get(ref)));
 
-      itemsVenta.forEach(item => {
-        const articuloCompleto = articulos.find(a => a.id === item.articuloId);
-        if (!articuloCompleto) {
-          throw new Error(`Artículo ${item.nombre} no encontrado en caché.`);
-        }
+        // --- 2. CALCULAR ---
+        const ultimoNum = consecDoc.data().ventas; // <-- Consecutivo de VENTAS
+        const nuevoNum = ultimoNum + 1;
+        nuevoConsecutivoStr = formatConsecutivo(nuevoNum, "FAV"); // <-- Prefijo FAV
+        
+        const ventaData = {
+          consecutivo: nuevoConsecutivoStr,
+          proveedor: { // Guardamos los datos del cliente
+            id: proveedorObj.id,
+            nombre: proveedorObj.nombre,
+            nit: proveedorObj.nit
+          },
+          items: itemsVenta,
+          total: totalVenta,
+          fecha: Timestamp.now(),
+          usuario: userProfile?.nombre || 'SISTEMA'
+        };
+        ventaDataParaTicket = ventaData;
 
-        const stockActual = articuloCompleto.stock || 0;
-        const nuevoStock = stockActual - item.cantidad;
-        if (nuevoStock < 0) {
-          throw new Error(`Stock insuficiente para ${item.nombre}`);
-        }
+        // --- 3. ESCRIBIR TODO ---
+        transaction.set(nuevaVentaRef, ventaData);
+        transaction.update(consecRef, { ventas: nuevoNum }); // <-- Actualiza 'ventas'
 
-        const articuloRef = doc(db, "articulos", item.articuloId);
-        batch.update(articuloRef, { stock: nuevoStock });
+        // ¡RESTAR el stock!
+        articulosDocs.forEach((artDoc, index) => {
+          if (!artDoc.exists()) throw new Error(`Artículo ${itemsVenta[index].nombre} no encontrado`);
+          
+          const stockActual = artDoc.data().stock || 0;
+          const nuevoStock = stockActual - itemsVenta[index].cantidad;
+          if (nuevoStock < 0) throw new Error(`Stock insuficiente para ${itemsVenta[index].nombre}`);
+          
+          transaction.update(artDoc.ref, { stock: nuevoStock });
+        });
       });
 
-      await batch.commit();
+      // --- 4. TRANSACCIÓN EXITOSA ---
+      await fetchDatosMaestros(); // Refresca el stock en los dropdowns
 
-      setVentaReciente(ventaDataParaTicket);
+      setVentaReciente(ventaDataParaTicket); 
       setProveedorSeleccionadoId('');
       // ¡No limpiamos itemsVenta aún!
 
@@ -257,6 +256,7 @@ function PaginaVentas() {
     }
     setIsSubmitting(false);
   };
+
   // --- Lógica de Impresión/Descarga (¡ACTUALIZADA!) ---
 
   const printVentaEnNavegador = (ventaData) => {
@@ -487,5 +487,6 @@ function PaginaVentas() {
     </div>
   );
 }
+
 
 export default PaginaVentas;

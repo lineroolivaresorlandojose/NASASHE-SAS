@@ -413,4 +413,5 @@ function PaginaVentasMenores() {
   );
 }
 
+
 export default PaginaVentasMenores;
