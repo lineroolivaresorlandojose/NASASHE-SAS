@@ -172,5 +172,4 @@ function PaginaConfiguracion() {
   );
 }
 
-
 export default PaginaConfiguracion;
