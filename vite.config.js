@@ -10,5 +10,39 @@ export default defineConfig({
   // entornos web.
   resolve: {
     conditions: ['tauri'],
-  },  
+  },
+  build: {
+    // Separa dependencias pesadas en chunks predecibles para reducir el tamaño
+    // de los bundles principales y evitar las advertencias de Tauri/Vite.
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+
+          if (id.includes('chart.js') || id.includes('react-chartjs-2')) {
+            return 'charts'
+          }
+
+          if (id.includes('firebase')) {
+            return 'firebase'
+          }
+
+          if (id.includes('jspdf')) {
+            return 'pdf-tools'
+          }
+
+          if (id.includes('react-router-dom')) {
+            return 'router'
+          }
+
+          if (id.includes('react')) {
+            return 'react'
+          }
+
+          return 'vendor'
+        },
+      },
+    },
+    chunkSizeWarningLimit: 900,
+  },
 })
