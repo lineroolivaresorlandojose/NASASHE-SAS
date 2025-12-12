@@ -22,7 +22,8 @@ function PaginaConfiguracion() {
     compras: '',
     ventas: '',
     gastos: '',
-    ventasMenores: ''
+    ventasMenores: '',
+    remisiones: ''
   });
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -39,7 +40,8 @@ function PaginaConfiguracion() {
             compras: (data.compras ?? 0).toString(),
             ventas: (data.ventas ?? 0).toString(),
             gastos: (data.gastos ?? 0).toString(),
-            ventasMenores: (data.ventasMenores ?? 0).toString()
+            ventasMenores: (data.ventasMenores ?? 0).toString(),
+            remisiones: (data.remisiones ?? 0).toString()
           });
         } else {
           setMensaje('No se encontró el documento de consecutivos en la base de datos.');
@@ -72,7 +74,8 @@ function PaginaConfiguracion() {
       compras: toNumberOrZero(valores.compras),
       ventas: toNumberOrZero(valores.ventas),
       gastos: toNumberOrZero(valores.gastos),
-      ventasMenores: toNumberOrZero(valores.ventasMenores)
+      ventasMenores: toNumberOrZero(valores.ventasMenores),
+      remisiones: toNumberOrZero(valores.remisiones)
     };
 
     setGuardando(true);
@@ -83,7 +86,8 @@ function PaginaConfiguracion() {
         compras: nuevosValores.compras.toString(),
         ventas: nuevosValores.ventas.toString(),
         gastos: nuevosValores.gastos.toString(),
-        ventasMenores: nuevosValores.ventasMenores.toString()
+        ventasMenores: nuevosValores.ventasMenores.toString(),
+        remisiones: nuevosValores.remisiones.toString()
       });
       setMensaje('¡Consecutivos actualizados! El sistema usará el número siguiente en cada módulo.');
     } catch (error) {
@@ -154,6 +158,7 @@ function PaginaConfiguracion() {
             {renderCampo('ventasMenores', 'Factura de venta menor', 'FAVMI')}
             {renderCampo('compras', 'Factura de compra', 'FAC')}
             {renderCampo('gastos', 'Comprobante de gasto', 'GAS')}
+            {renderCampo('remisiones', 'Remisiones', 'REM')}
           </div>
 
           <button type="submit" className="configuracion-boton" disabled={guardando}>
@@ -166,5 +171,6 @@ function PaginaConfiguracion() {
     </div>
   );
 }
+
 
 export default PaginaConfiguracion;
