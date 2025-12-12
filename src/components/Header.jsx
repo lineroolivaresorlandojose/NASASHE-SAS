@@ -39,10 +39,15 @@ function Header() {
               icono="/icons/Proveedores.png"
               to="/proveedores"
             />
-            <HeaderButton 
-              texto="Ventas" 
+            <HeaderButton
+              texto="Ventas"
               icono="/icons/Ventas (F2).png"
               to="/ventas"
+            />
+            <HeaderButton
+              texto="Remisiones"
+              icono="/icons/Remisiones.png"
+              to="/remisiones"
             />
             <HeaderButton
               texto="Usuarios"
@@ -84,5 +89,6 @@ function Header() {
     </header>
   );
 }
+
 
 export default Header;
