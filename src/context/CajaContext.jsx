@@ -26,6 +26,7 @@ export function CajaProvider({ children }) {
   const [base, setBase] = useState(0);
   const [baseGuardada, setBaseGuardada] = useState(0);
   const [consecutivos, setConsecutivos] = useState(0); // El nuevo estado
+  const [consecutivosData, setConsecutivosData] = useState({});
   const [baseEstablecida, setBaseEstablecida] = useState(getInitialBaseEstablecida);
   const [currentUser, setCurrentUser] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
@@ -73,8 +74,10 @@ export function CajaProvider({ children }) {
           // 3. Listener para los CONSECUTIVOS (se actualiza en tiempo real)
           unsubscribeConsec = onSnapshot(consecDocRef, (docSnap) => {
             if (docSnap.exists()) {
-              setConsecutivos(docSnap.data().compras); // Guardamos el número
-              console.log("¡Consecutivos actualizados (onSnapshot)!: ", docSnap.data().compras);
+              const data = docSnap.data();
+              setConsecutivos(data.compras ?? 0); // Guardamos el número
+              setConsecutivosData(data);
+              console.log("¡Consecutivos actualizados (onSnapshot)!: ", data.compras);
             } else {
               alert("Error de Configuración: No se encontró el documento 'consecutivos'.");
             }
@@ -187,7 +190,8 @@ export function CajaProvider({ children }) {
     loadingAuth,
     userProfile,
     setBase,
-    consecutivos // <-- Exponemos los consecutivos
+    consecutivos, // <-- Exponemos los consecutivos
+    consecutivosData
   };
 
   // Esta parte está bien
@@ -208,4 +212,5 @@ export function useCaja() {
     throw new Error('useCaja debe ser usado dentro de un CajaProvider');
   }
   return context;
+
 }
