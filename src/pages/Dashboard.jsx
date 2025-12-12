@@ -36,13 +36,20 @@ function Dashboard() {
               to="/proveedores"
             />
 
-            <ModuleButton 
+            <ModuleButton
               titulo="Ventas"
               descripcion="Crear facturas de venta a proveedores."
               icono="/icons/Ventas (F2).png"
               to="/ventas"
             />
-            
+
+            <ModuleButton
+              titulo="Remisiones"
+              descripcion="Emitir remisiones y generar PDF firmado."
+              icono="/icons/Remisiones.png"
+              to="/remisiones"
+            />
+
             <ModuleButton
               titulo="Usuarios"
               descripcion="Gestionar cuentas de empleados."
@@ -89,5 +96,6 @@ function Dashboard() {
     </div>
   );
 }
+
 
 export default Dashboard;
