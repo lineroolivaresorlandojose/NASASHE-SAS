@@ -15,6 +15,7 @@ import PaginaReportes from './pages/PaginaReportes';
 import PaginaLogin from './pages/PaginaLogin';
 import PaginaVentasMenores from './pages/PaginaVentasMenores';
 import PaginaUsuarios from './pages/PaginaUsuarios';
+import PaginaRemisiones from './pages/PaginaRemisiones';
 
 // --- ¡PASO 3.1: AÑADE ESTA LÍNEA! ---
 import PaginaImpresion from './pages/PaginaImpresion';
