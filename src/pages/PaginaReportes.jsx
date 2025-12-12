@@ -120,6 +120,7 @@ const generarTextoTicketInventario = (inventario, usuario) => {
   contenido += "-".repeat(ancho) + "\n";
   return contenido;
 };
+
 // ... (Fin del código de inventario)
 
 function PaginaReportes() {
@@ -141,6 +142,10 @@ function PaginaReportes() {
   const [historialVentas, setHistorialVentas] = useState([]);
   const [historialVentasMenores, setHistorialVentasMenores] = useState([]);
   const [historialGastos, setHistorialGastos] = useState([]);
+  const [historialRemisiones, setHistorialRemisiones] = useState([]);
+  const [remisionesFechaInicio, setRemisionesFechaInicio] = useState(getTodayDate);
+  const [remisionesFechaFin, setRemisionesFechaFin] = useState(getTodayDate);
+  const [busquedaConsecutivoRemision, setBusquedaConsecutivoRemision] = useState('');
 
   // --- Estados Inventario ---
   const [inventario, setInventario] = useState([]);
@@ -293,10 +298,54 @@ function PaginaReportes() {
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach(doc => { const data = doc.data(); gastos.push({ id: doc.id, ...data, fecha: data.fecha.toDate() }); });
       setHistorialGastos(gastos);
-    } catch (error) { console.error("Error al buscar historial de gastos: ", error); await showMessage("Error al buscar historial." , {
-      title: 'Nasashe sas',
-      type: 'error'}); 
+    } catch (error) { console.error("Error al buscar historial de gastos: ", error); alert("Error al buscar historial."); }
+    setLoading(false);
+  };
+
+
+  // --- Función Historial Remisiones ---
+  const handleFetchHistorialRemisiones = async () => {
+    setLoading(true);
+
+    const consecutivoBusqueda = busquedaConsecutivoRemision.trim().toUpperCase();
+
+    const inicio = new Date(parseDateString(remisionesFechaInicio).setHours(0, 0, 0, 0));
+    const fin = new Date(parseDateString(remisionesFechaFin).setHours(23, 59, 59, 999));
+
+    const startTimestamp = Timestamp.fromDate(inicio);
+    const endTimestamp = Timestamp.fromDate(fin);
+
+    try {
+      let querySnapshot;
+
+      if (consecutivoBusqueda) {
+        const q = query(collection(db, "remisiones"), where("consecutivo", "==", consecutivoBusqueda));
+        querySnapshot = await getDocs(q);
+      } else {
+        const q = query(
+          collection(db, "remisiones"),
+          where("fecha", ">=", startTimestamp),
+          where("fecha", "<=", endTimestamp),
+          orderBy("fecha", "desc")
+        );
+        querySnapshot = await getDocs(q);
+      }
+
+      const remisiones = querySnapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          ...data,
+          fecha: data.fecha?.toDate ? data.fecha.toDate() : new Date(),
+        };
+      });
+
+      setHistorialRemisiones(remisiones);
+    } catch (error) {
+      console.error("Error al buscar historial de remisiones: ", error);
+      alert("Error al buscar remisiones.");
     }
+
     setLoading(false);
   };
 
@@ -402,6 +451,108 @@ function PaginaReportes() {
   const printGastoEnNavegador = (gastoData) => {
     const textoTicket = generarTextoTicketGasto(gastoData, userProfile);
     imprimirTicketEnNavegador(textoTicket, `Comprobante ${gastoData.consecutivo}`);
+  };
+
+  const formatearFechaRemision = (fecha) => {
+    if (!fecha) return '';
+    return fecha instanceof Date ? fecha.toLocaleString('es-CO') : new Date(fecha).toLocaleString('es-CO');
+  };
+
+  const generarPdfRemision = async (remisionData) => {
+    const doc = new jsPDF({ unit: 'mm', format: 'letter' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 12;
+    let cursorY = margin;
+
+    doc.setFontSize(16);
+    doc.text('NASASHE S.A.S.', pageWidth / 2, cursorY + 6, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text('901.907.763-3', pageWidth / 2, cursorY + 12, { align: 'center' });
+    doc.text('Calle 98 9B 35', pageWidth / 2, cursorY + 18, { align: 'center' });
+    doc.text('Tel: 3227377140', pageWidth / 2, cursorY + 24, { align: 'center' });
+
+    doc.setFontSize(14);
+    doc.text('REMISIÓN', pageWidth - margin, cursorY + 10, { align: 'right' });
+    doc.setFontSize(12);
+    doc.text(remisionData.consecutivo, pageWidth - margin, cursorY + 18, { align: 'right' });
+
+    cursorY += 30;
+    doc.setFontSize(11);
+    doc.text(`Destino: ${remisionData.destino?.nombre || 'N/D'}`, margin, cursorY);
+    doc.text(`Dirección: ${remisionData.destino?.direccion || 'N/D'}`, pageWidth / 2, cursorY);
+    cursorY += 6;
+    doc.text(`NIT: ${remisionData.destino?.nit || 'N/D'}`, margin, cursorY);
+    doc.text(`Teléfono: ${remisionData.destino?.telefono || 'N/D'}`, pageWidth / 2, cursorY);
+    cursorY += 10;
+
+    doc.text(`Fecha emisión: ${formatearFechaRemision(remisionData.fecha)}`, margin, cursorY);
+    cursorY += 6;
+    doc.text(`Conductor: ${remisionData.conductor?.nombre || 'N/D'}`, margin, cursorY);
+    doc.text(`Cédula: ${remisionData.conductor?.cedula || 'N/D'}`, pageWidth / 2, cursorY);
+    cursorY += 6;
+    doc.text(`Dirección: ${remisionData.conductor?.direccion || 'N/D'}`, margin, cursorY);
+    cursorY += 6;
+    doc.text(`Vínculo: ${remisionData.conductor?.vinculo || 'N/D'}`, margin, cursorY);
+    doc.text(`Placa: ${remisionData.conductor?.placa || 'N/D'}`, pageWidth / 2, cursorY);
+    cursorY += 6;
+    doc.text(`Celular: ${remisionData.conductor?.celular || 'N/D'}`, margin, cursorY);
+
+    cursorY += 6;
+    if (remisionData.observaciones) {
+      doc.text(`Observaciones: ${remisionData.observaciones}`, margin, cursorY);
+      cursorY += 6;
+    }
+
+    autoTable(doc, {
+      startY: cursorY + 4,
+      head: [['Ítem', 'Detalle del material', 'Cantidad (Kg)']],
+      body: (remisionData.items || []).map((item, idx) => [
+        (idx + 1).toString(),
+        item.nombre,
+        (item.cantidad ?? 0).toLocaleString('es-CO'),
+      ]),
+      styles: { fontSize: 10, cellPadding: 2 },
+      theme: 'grid',
+      headStyles: { fillColor: [26, 71, 77] },
+      tableWidth: 'auto',
+      columnStyles: {
+        0: { cellWidth: 20 },
+        1: { cellWidth: 120 },
+        2: { cellWidth: 30, halign: 'right' },
+      },
+      margin: { left: margin, right: margin },
+    });
+
+    const finalY = doc.lastAutoTable.finalY + 10;
+    doc.line(margin, finalY, pageWidth - margin, finalY);
+    doc.text('Firma y sello quien diligencia', margin + 10, finalY + 8);
+    doc.text('Firma Conductor', pageWidth / 2 - 10, finalY + 8);
+    doc.text('Firma cliente y/or Recibidor', pageWidth - margin - 50, finalY + 8);
+
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i += 1) {
+      doc.setPage(i);
+      const pageHeight = doc.internal.pageSize.getHeight();
+      doc.text(
+        `Página ${i} de ${pageCount}`,
+        pageWidth - margin,
+        pageHeight - 8,
+        { align: 'right' }
+      );
+    }
+
+    return doc;
+  };
+
+  const handleReimprimirRemision = async (remisionData) => {
+    try {
+      const pdf = await generarPdfRemision(remisionData);
+      const blobUrl = pdf.output('bloburl');
+      window.open(blobUrl, '_blank');
+    } catch (error) {
+      console.error('Error al reimprimir la remisión:', error);
+      alert('No se pudo generar el PDF de la remisión.');
+    }
   };
 
   const prepararEImprimir = async (tipo, datos) => {
@@ -709,6 +860,9 @@ function PaginaReportes() {
         <button className={`tab-button ${activeTab === 'historialGastos' ? 'active' : ''}`} onClick={() => setActiveTab('historialGastos')}>
           Hist. Gastos
         </button>
+        <button className={`tab-button ${activeTab === 'historialRemisiones' ? 'active' : ''}`} onClick={() => setActiveTab('historialRemisiones')}>
+          Hist. Remisiones
+        </button>
         <button className={`tab-button ${activeTab === 'inventario' ? 'active' : ''}`} onClick={() => setActiveTab('inventario')}>
           Inventario
         </button>
@@ -926,9 +1080,78 @@ function PaginaReportes() {
           </div>
         )}
 
-        {/* --- PESTAÑA 6: INVENTARIO --- */}
-        {activeTab === 'inventario' && (
-          // ... (tu código de Inventario sigue igual)
+        {/* --- PESTAÑA 6: HISTORIAL REMISIONES --- */}
+        {activeTab === 'historialRemisiones' && (
+          <div>
+            <div className="reporte-controles">
+              <label htmlFor="remision-fecha-inicio">Desde:</label>
+              <input
+                type="date"
+                id="remision-fecha-inicio"
+                value={remisionesFechaInicio}
+                onChange={(e) => setRemisionesFechaInicio(e.target.value)}
+              />
+              <label htmlFor="remision-fecha-fin">Hasta:</label>
+              <input
+                type="date"
+                id="remision-fecha-fin"
+                value={remisionesFechaFin}
+                onChange={(e) => setRemisionesFechaFin(e.target.value)}
+              />
+              <label htmlFor="remision-consecutivo">Consecutivo (opcional)</label>
+              <input
+                id="remision-consecutivo"
+                type="text"
+                placeholder="REM-000001"
+                value={busquedaConsecutivoRemision}
+                onChange={(e) => setBusquedaConsecutivoRemision(e.target.value)}
+              />
+              <button onClick={handleFetchHistorialRemisiones} className="btn-generar" disabled={loading}>
+                {loading ? "Buscando..." : "Buscar Remisiones"}
+              </button>
+            </div>
+
+            <h2>Historial de Remisiones</h2>
+            <table className="historial-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Consecutivo</th>
+                  <th>Destino</th>
+                  <th>Conductor</th>
+                  <th>Items</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan="6" style={{textAlign: 'center'}}>Buscando...</td></tr>
+                ) : historialRemisiones.length === 0 ? (
+                  <tr><td colSpan="6" style={{textAlign: 'center'}}>No se encontraron remisiones.</td></tr>
+                ) : (
+                  historialRemisiones.map((remision) => (
+                    <tr key={remision.id}>
+                      <td>{formatearFechaRemision(remision.fecha)}</td>
+                      <td>{remision.consecutivo}</td>
+                      <td>{remision.destino?.nombre || 'N/D'}</td>
+                      <td>{remision.conductor?.nombre || 'N/D'}</td>
+                      <td>{Array.isArray(remision.items) ? remision.items.length : 0}</td>
+                      <td>
+                        <button onClick={() => handleReimprimirRemision(remision)} className="btn-reimprimir">
+                          Re-imprimir
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* --- PESTAÑA 8: ANÁLISIS --- */}
+        {activeTab === 'analisis' && (
+          // ... (tu código de Análisis sigue igual)
           <div>
             <div className="inventario-header">
               <h2>Reporte de Inventario Actual</h2>
@@ -1040,3 +1263,4 @@ function PaginaReportes() {
 
 
 export default PaginaReportes;
+
