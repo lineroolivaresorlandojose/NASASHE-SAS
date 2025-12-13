@@ -1,54 +1,58 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
-export default defineConfig({
-  // El sitio se publica en GitHub Pages bajo el subdirectorio
-  // "/NASASHE-SAS/". Configurar la propiedad `base` asegura que
-  // los assets generados por Vite se sirvan desde la ruta correcta
-  // en producción en lugar de intentar cargarlos desde "/assets",
-  // lo que provocaba los errores 404 vistos en GitHub Pages.
-  base: '/NASASHE-SAS/',
-  plugins: [react()],
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+
+  // Por defecto usamos rutas relativas para que el build funcione en GitHub
+  // Pages (subdirectorio). Si se define VITE_BASE_URL (por ejemplo en Firebase
+  // Hosting, donde la app se sirve desde "/"), priorizamos ese valor.
+  const base = env.VITE_BASE_URL || './'
+
+  return {
+    base,
+    plugins: [react()],
   // Permite que Vite resuelva los paquetes que exponen la condición "tauri",
   // necesaria para los plugins oficiales de Tauri cuando la app corre en el
   // escritorio. Sin esto, el import de '@tauri-apps/plugin-dialog' falla en
   // entornos web.
-  resolve: {
-    conditions: ['tauri'],
-  },
-  build: {
-    // Separa dependencias pesadas en chunks predecibles para reducir el tamaño
-    // de los bundles principales y evitar las advertencias de Tauri/Vite.
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (!id.includes('node_modules')) return undefined
+    resolve: {
+      conditions: ['tauri'],
+    },
+    build: {
+      // Separa dependencias pesadas en chunks predecibles para reducir el tamaño
+      // de los bundles principales y evitar las advertencias de Tauri/Vite.
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined
 
-          if (id.includes('chart.js') || id.includes('react-chartjs-2')) {
-            return 'charts'
-          }
+            if (id.includes('chart.js') || id.includes('react-chartjs-2')) {
+              return 'charts'
+            }
 
-          if (id.includes('firebase')) {
-            return 'firebase'
-          }
+            if (id.includes('firebase')) {
+              return 'firebase'
+            }
 
-          if (id.includes('jspdf')) {
-            return 'pdf-tools'
-          }
+            if (id.includes('jspdf')) {
+              return 'pdf-tools'
+            }
 
-          if (id.includes('react-router-dom')) {
-            return 'router'
-          }
+            if (id.includes('react-router-dom')) {
+              return 'router'
+            }
 
-          if (id.includes('react')) {
-            return 'react'
-          }
+            if (id.includes('react')) {
+              return 'react'
+            }
 
-          return 'vendor'
+            return 'vendor'
+          },
         },
       },
+      chunkSizeWarningLimit: 900,
     },
-    chunkSizeWarningLimit: 900,
-  },
+  }
 })
