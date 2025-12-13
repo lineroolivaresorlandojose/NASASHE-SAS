@@ -146,3 +146,64 @@
 .btn-pre-borrar { background-color: #dc3545; }
 
 .btn-pre-borrar:disabled { background-color: #ccc; }
+
+.remision-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 15px;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #f7f9fa;
+}
+
+.remision-selector__control {
+  flex: 1;
+  min-width: 240px;
+}
+
+.remision-selector__control label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.remision-selector__control select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.remision-selector__acciones {
+  display: flex;
+  gap: 10px;
+}
+
+.remision-selector__acciones button {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  background: #007bff;
+  color: white;
+}
+
+.remision-selector__acciones button:disabled {
+  background: #cfd8dc;
+  cursor: not-allowed;
+}
+
+.btn-limpiar-remision {
+  background: #6c757d;
+}
+
+.remision-activa {
+  width: 100%;
+  margin: 0;
+  font-weight: 600;
+  color: #0d6efd;
+}
