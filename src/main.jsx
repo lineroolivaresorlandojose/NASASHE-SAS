@@ -9,7 +9,6 @@ import { BrowserRouter } from 'react-router-dom';
 
 // 1. ¡Importamos nuestro nuevo Proveedor de Contexto!
 import { CajaProvider } from './context/CajaContext';
-import registerServiceWorker from './registerServiceWorker'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -24,5 +23,3 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </CajaProvider>
   </React.StrictMode>,
 )
-
-registerServiceWorker()

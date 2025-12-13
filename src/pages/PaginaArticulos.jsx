@@ -12,7 +12,6 @@ import {
 } from 'firebase/firestore';
 import './PaginaArticulos.css';
 import { showMessage } from '../utils/showMessage';
-import assetPath from '../utils/assetPath';
 
 // 1. ¡NUEVO! Lista de todas tus imágenes en la carpeta /public/icons/
 const listaDeImagenes = [
@@ -146,7 +145,7 @@ function PaginaArticulos() {
       precioCompra: articulo.precioCompra,
       precioVenta: articulo.precioVenta,
       stock: articulo.stock,
-      imagenUrl: assetPath(articulo.imagenUrl || '')
+      imagenUrl: articulo.imagenUrl || ''
     });
   };
 
@@ -233,7 +232,7 @@ function PaginaArticulos() {
             >
               <option value="">-- Sin imagen --</option>
               {listaDeImagenes.map(imagen => (
-                <option key={imagen} value={assetPath(`icons/${imagen}`)}>
+                <option key={imagen} value={`/icons/${imagen}`}>
                   {imagen}
                 </option>
               ))}
@@ -274,7 +273,7 @@ function PaginaArticulos() {
                       >
                         <option value="">-- Sin imagen --</option>
                         {listaDeImagenes.map(imagen => (
-                          <option key={imagen} value={assetPath(`icons/${imagen}`)}>
+                          <option key={imagen} value={`/icons/${imagen}`}>
                             {imagen}
                           </option>
                         ))}
@@ -293,7 +292,7 @@ function PaginaArticulos() {
                   /* --- MODO VISTA --- */
                   <>
                     <td className="articulo-imagen-cell">
-                      {articulo.imagenUrl && <img src={assetPath(articulo.imagenUrl)} alt={articulo.nombre} />}
+                      {articulo.imagenUrl && <img src={articulo.imagenUrl} alt={articulo.nombre} />}
                     </td>
                     <td>{articulo.nombre}</td>
                     <td>${articulo.precioCompra.toLocaleString('es-CO')}</td>
@@ -316,4 +315,3 @@ function PaginaArticulos() {
 
 
 export default PaginaArticulos;
-
