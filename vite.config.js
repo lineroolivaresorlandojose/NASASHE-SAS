@@ -13,11 +13,10 @@ export default defineConfig({
     conditions: ['tauri'],
   },
   build: {
-    // GitHub Pages sirve el sitio desde "/NASASHE-SAS/chunk-dist".
-    // Ajustamos el directorio de salida para que los assets generados
-    // coincidan con las rutas absolutas que consume la página y así
-    // evitar los 404 al cargar los bundles.
-    outDir: 'chunk-dist',
+    // Usamos el directorio por defecto que espera el workflow de GitHub Pages
+    // (`dist`) para que los artefactos publicados coincidan con la ruta que
+    // sube `upload-pages-artifact` y evitar así los 404 en producción.
+    outDir: 'dist',
     // Separa dependencias pesadas en chunks predecibles para reducir el tamaño
     // de los bundles principales y evitar las advertencias de Tauri/Vite.
     rollupOptions: {
