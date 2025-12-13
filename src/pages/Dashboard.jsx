@@ -4,6 +4,7 @@ import React from 'react';
 import './Dashboard.css';
 import ModuleButton from '../components/ModuleButton';
 import { useCaja } from '../context/CajaContext';
+import assetPath from '../utils/assetPath';
 
 function Dashboard() {
 
@@ -25,42 +26,42 @@ function Dashboard() {
             <ModuleButton 
               titulo="Artículos"
               descripcion="Gestionar inventario, precios y categorías."
-              icono="/icons/Artículos.png"
+              icono={assetPath('icons/Artículos.png')}
               to="/articulos" // <-- VERIFICA ESTA LÍNEA
             />
             
             <ModuleButton 
               titulo="Proveedores"
               descripcion="Administrar lista de proveedores y cuentas."
-              icono="/icons/Proveedores.png"
+              icono={assetPath('icons/Proveedores.png')}
               to="/proveedores"
             />
 
             <ModuleButton
               titulo="Ventas"
               descripcion="Crear facturas de venta a proveedores."
-              icono="/icons/Ventas (F2).png"
+              icono={assetPath('icons/Ventas (F2).png')}
               to="/ventas"
             />
 
             <ModuleButton
               titulo="Remisiones"
               descripcion="Emitir remisiones y generar PDF firmado."
-              icono="/icons/Remisiones.png"
+              icono={assetPath('icons/Remisiones.png')}
               to="/remisiones"
             />
 
             <ModuleButton
               titulo="Usuarios"
               descripcion="Gestionar cuentas de empleados."
-              icono="/icons/usuarios.png"
+              icono={assetPath('icons/usuarios.png')}
               to="/usuarios"
             />
 
             <ModuleButton
               titulo="Configuración"
               descripcion="Restablecer consecutivos y ajustes generales."
-              icono="/icons/CONFIG.png"
+              icono={assetPath('icons/CONFIG.png')}
               to="/configuracion"
             />
           </>
@@ -70,25 +71,25 @@ function Dashboard() {
         <ModuleButton 
           titulo="Reportes"
           descripcion="Ver resúmenes de ventas, caja e inventario."
-          icono="/icons/Reportes.png"
+          icono={assetPath('icons/Reportes.png')}
           to="/reportes"
         />
         <ModuleButton 
           titulo="Compras"
           descripcion="Registrar compras a recicladores."
-          icono="/icons/Compras.png"
+          icono={assetPath('icons/Compras.png')}
           to="/compras"
         />
         <ModuleButton 
           titulo="Gastos"
           descripcion="Registrar salidas de efectivo (ej. comida)."
-          icono="/icons/gastos.png"
+          icono={assetPath('icons/gastos.png')}
           to="/gastos"
         />
         <ModuleButton 
           titulo="Venta Menor"
           descripcion="Registrar ventas a particulares (ej. tubos)."
-          icono="/icons/ventas-menores.png"
+          icono={assetPath('icons/ventas-menores.png')}
           to="/ventas-menores"
         />
 
@@ -99,3 +100,4 @@ function Dashboard() {
 
 
 export default Dashboard;
+
