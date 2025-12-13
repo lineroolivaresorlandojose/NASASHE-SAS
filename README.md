@@ -1,16 +1,39 @@
-# React + Vite
+# NASASHE-SAS
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación React construida con Vite. Este documento explica cómo ejecutarla localmente y cómo publicarla automáticamente en GitHub Pages con GitHub Actions.
 
-Currently, two official plugins are available:
+## Requisitos
+- Node.js 18 o superior
+- npm 9 o superior (incluido con Node.js)
+  
+## Scripts disponibles
+- `npm install`: instala dependencias.
+- `npm run dev`: arranca el servidor de desarrollo.
+- `npm run build`: genera la versión estática en `dist/`.
+- `npm run preview`: sirve la build estática localmente.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Despliegue automático en GitHub Pages (rama `gh-pages` generada por Actions)
+1. **Sube el workflow al repositorio**
+   - El archivo `.github/workflows/deploy-pages.yml` ya está configurado. Solo tienes que hacer *push* de la rama donde se encuentre (por defecto `main`).
 
-## React Compiler
+2. **Activa GitHub Pages para usar Actions**
+   - En GitHub: `Settings → Pages → Build and deployment → Source` elige **GitHub Actions** (no rama).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+3. **Qué hace el workflow al hacer push a `main`**
+   - Usa Node.js 18.
+   - Ejecuta `npm ci` para instalar dependencias con el `package-lock.json`.
+   - Ejecuta `npm run build` para generar la carpeta `dist/`.
+   - Sube `dist/` como artefacto y lo publica en el entorno `github-pages` usando las acciones oficiales `upload-pages-artifact` y `deploy-pages`.
+   - GitHub crea/actualiza la rama interna de Pages (equivalente a `gh-pages`) y sirve los archivos desde la raíz.
 
-## Expanding the ESLint configuration
+4. **Primera publicación**
+   - Haz un *commit* y *push* a `main`. 
+   - En la pestaña **Actions** verás el flujo `Deploy to GitHub Pages`; al terminar, la URL aparecerá en **Settings → Pages**.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+5. **Base URL para Vite**
+   - Si publicas bajo `https://<usuario>.github.io/<repo>/`, asegúrate de que `vite.config.js` tenga `base: "/<repo>/"` en `defineConfig` para que los assets se resuelvan correctamente. Ajusta el valor si cambias el nombre del repositorio o usas dominio personalizado.
+
+6. **Despliegues manuales**
+   - También puedes lanzar el flujo desde **Actions → Deploy to GitHub Pages → Run workflow** (usa el evento `workflow_dispatch`).
+
+Con estos pasos, cada cambio en `main` disparará un build limpio y publicará automáticamente la carpeta `dist/` en GitHub Pages.
