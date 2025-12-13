@@ -2,13 +2,13 @@
 
 // 1. Importa las funciones que necesitas de los SDK de Firebase
 import { initializeApp } from "firebase/app";
-//import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 // 👇 CAMBIO 1: Importa las nuevas funciones
 import {
   initializeFirestore,
   persistentLocalCache,
-  persistentMultipleTabManager
+  persistentMultipleTabManager,
+  memoryLocalCache
 } from "firebase/firestore";
 
 // 2. ¡MUY IMPORTANTE!
@@ -24,31 +24,37 @@ const firebaseConfig = {
   appId: "1:401122117055:web:0b48451b9b4d5291cacd0a"
 };
 
-
 // 3. Inicializa Firebase
 const app = initializeApp(firebaseConfig);
-
 
 // 4. INICIALIZA LOS SERVICIOS CON PERSISTENCIA
 // 👇 CAMBIO 2: Usamos 'initializeFirestore' en lugar de 'getFirestore'
 //    y le pasamos la configuración del caché local directamente.
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    // Esto es ideal para tu caso de varias PCs (o varias pestañas)
-    tabManager: persistentMultipleTabManager()
-  })
-});
+let db;
+
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      // Esto es ideal para tu caso de varias PCs (o varias pestañas)
+      tabManager: persistentMultipleTabManager()
+    })
+  });
+  console.log("¡Persistencia local activada con el método moderno! 🚀");
+} catch (error) {
+  console.warn(
+    "No se pudo activar la persistencia local, usando caché en memoria en su lugar.",
+    error
+  );
+
+  // Fallback sin persistencia para que la app siga funcionando en entornos
+  // donde IndexedDB o la gestión de múltiples pestañas no estén disponibles
+  db = initializeFirestore(app, {
+    localCache: memoryLocalCache()
+  });
+}
 
 // La autenticación sigue igual
 export const auth = getAuth(app);
+export { db };
 
-// Mensaje de éxito en la consola
-console.log("¡Persistencia local activada con el método moderno! 🚀");
-
-
-// 4. EXPORTA TUS SERVICIOS
-//    Asegúrate de que estas dos líneas estén EXACTAMENTE así,
-//    con 'export const' al inicio.
-//    Este fue el punto del error.
-// *export const db = getFirestore(app);
 // *export const auth = getAuth(app);
