@@ -2,13 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { 
-  collection, 
-  getDocs, 
-  writeBatch, 
+import {
+  collection,
+  getDocs,
   doc,
   Timestamp,
-  runTransaction 
+  runTransaction
 } from 'firebase/firestore';
 import { useCaja } from '../context/CajaContext';
 import './PaginaVentas.css'; // ¡CSS de Ventas!
@@ -40,6 +39,9 @@ function PaginaVentas() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [proveedores, setProveedores] = useState([]);
   const [articulos, setArticulos] = useState([]);
+  const [remisiones, setRemisiones] = useState([]);
+  const [remisionSeleccionadaId, setRemisionSeleccionadaId] = useState('');
+  const [remisionEnUso, setRemisionEnUso] = useState(null);
 
   // --- Estados del formulario ---
   const [proveedorSeleccionadoId, setProveedorSeleccionadoId] = useState('');
@@ -78,12 +80,24 @@ function PaginaVentas() {
     }
     setLoading(false);
   };
+
+  const fetchRemisiones = async () => {
+    try {
+      const remisionesSnap = await getDocs(collection(db, "remisiones"));
+      const remisionesLista = remisionesSnap.docs
+        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+        .sort((a, b) => (b.fecha?.toDate?.() ?? 0) - (a.fecha?.toDate?.() ?? 0));
+      setRemisiones(remisionesLista);
+    } catch (error) {
+      console.error("Error al cargar remisiones:", error);
+    }
+  };
   
   useEffect(() => {
     fetchDatosMaestros();
+    fetchRemisiones();
   }, []);
 
-  // --- Calcular Total ---
   useEffect(() => {
     let nuevoTotal = 0;
     itemsVenta.forEach(item => {
@@ -92,7 +106,90 @@ function PaginaVentas() {
     setTotalVenta(nuevoTotal);
   }, [itemsVenta]);
 
-  
+  const mapearRemisionAItems = (remision) => {
+    return (remision.items || []).map((item) => {
+      const articulo = articulos.find((a) => a.id === item.articuloId);
+      const precioVenta = articulo?.precioVenta ?? item.precioVenta ?? 0;
+      const nombre = articulo?.nombre || item.nombre || 'Artículo sin nombre';
+      return {
+        localId: generarIdLocal(),
+        articuloId: item.articuloId,
+        nombre,
+        cantidad: item.cantidad,
+        precioVenta,
+        subtotal: item.cantidad * precioVenta
+      };
+    });
+  };
+
+  const handleCargarRemision = () => {
+    if (!remisionSeleccionadaId) {
+      alert('Selecciona una remisión para continuar.');
+      return;
+    }
+
+    const remision = remisiones.find((r) => r.id === remisionSeleccionadaId);
+    if (!remision) {
+      alert('No se encontró la remisión seleccionada.');
+      return;
+    }
+
+    setRemisionEnUso({ id: remision.id, consecutivo: remision.consecutivo });
+    setProveedorSeleccionadoId(remision.destino?.id || '');
+    setItemsVenta(mapearRemisionAItems(remision));
+    setVentaReciente(null);
+    setEditingItemId(null);
+  };
+
+  const handleLimpiarRemision = () => {
+    setRemisionEnUso(null);
+    setRemisionSeleccionadaId('');
+  };
+
+  const prepararAjustesStock = () => {
+    const ajustes = {};
+
+    for (const item of itemsVenta) {
+      const articulo = articulos.find((a) => a.id === item.articuloId);
+      const stockActual = articulo?.stock || 0;
+
+      if (stockActual >= item.cantidad) {
+        ajustes[item.articuloId] = stockActual - item.cantidad;
+        continue;
+      }
+
+      const dejarEnCero = window.confirm(
+        `El artículo ${item.nombre} tiene ${stockActual}kg en inventario `
+        + `y estás vendiendo ${item.cantidad}kg. ¿Deseas dejar el inventario en 0?\n`
+        + 'Presiona Cancelar para definir otro valor.'
+      );
+
+      if (dejarEnCero) {
+        ajustes[item.articuloId] = 0;
+        continue;
+      }
+
+      const respuesta = window.prompt(
+        '¿Qué cantidad debe quedar en inventario después de la venta?',
+        `${Math.max(stockActual - item.cantidad, 0)}`
+      );
+
+      if (respuesta === null) {
+        return null; // Usuario canceló
+      }
+
+      const valorNumerico = Number(respuesta);
+      if (Number.isNaN(valorNumerico) || valorNumerico < 0) {
+        alert('Ingresa un número válido para continuar.');
+        return null;
+      }
+
+      ajustes[item.articuloId] = valorNumerico;
+    }
+
+    return ajustes;
+  };
+
   // --- Añadir Item (con validación de stock) ---
   const handleAddItem = () => {
     if (!articuloSeleccionadoId || !cantidad || Number(cantidad) <= 0) {
@@ -112,8 +209,11 @@ function PaginaVentas() {
 
     // ¡Validación de Stock!
     if ((cantNum + cantidadEnLista) > stockActual) {
-      alert(`¡No hay stock suficiente! Stock actual: ${stockActual}, Quieres vender: ${cantNum + cantidadEnLista}`);
-      return;
+      const continuar = window.confirm(
+        `El stock actual es ${stockActual}kg y quieres facturar ${cantNum + cantidadEnLista}kg. `
+        + '¿Deseas continuar y ajustarás el inventario al confirmar la venta?'
+      );
+      if (!continuar) return;
     }
     
     const subtotal = cantNum * articulo.precioVenta; // ¡Usamos precioVenta!
@@ -192,12 +292,21 @@ function PaginaVentas() {
     }
     setIsSubmitting(true);
 
+    const ajustesStock = prepararAjustesStock();
+    if (ajustesStock === null) {
+      setIsSubmitting(false);
+      return;
+    }
+
     let ventaDataParaTicket = null;
     let nuevoConsecutivoStr = "";
 
     try {
       const nuevaVentaRef = doc(collection(db, "ventas"));
       const proveedorObj = proveedores.find(p => p.id === proveedorSeleccionadoId);
+      if (!proveedorObj) {
+        throw new Error('No se encontró la información del cliente seleccionado.');
+      }
 
       await runTransaction(db, async (transaction) => {
         // --- 1. LEER TODO ---
@@ -223,7 +332,9 @@ function PaginaVentas() {
           items: itemsVenta,
           total: totalVenta,
           fecha: Timestamp.now(),
-          usuario: userProfile?.nombre || 'SISTEMA'
+          usuario: userProfile?.nombre || 'SISTEMA',
+          remisionId: remisionEnUso?.id || null,
+          remisionConsecutivo: remisionEnUso?.consecutivo || null
         };
         ventaDataParaTicket = ventaData;
 
@@ -234,11 +345,21 @@ function PaginaVentas() {
         // ¡RESTAR el stock!
         articulosDocs.forEach((artDoc, index) => {
           if (!artDoc.exists()) throw new Error(`Artículo ${itemsVenta[index].nombre} no encontrado`);
-          
+
           const stockActual = artDoc.data().stock || 0;
-          const nuevoStock = stockActual - itemsVenta[index].cantidad;
-          if (nuevoStock < 0) throw new Error(`Stock insuficiente para ${itemsVenta[index].nombre}`);
-          
+          const ajusteGuardado = ajustesStock[itemsVenta[index].articuloId];
+
+          let nuevoStock = stockActual - itemsVenta[index].cantidad;
+
+          if (stockActual < itemsVenta[index].cantidad) {
+            if (typeof ajusteGuardado !== 'number') {
+              throw new Error(`Stock insuficiente para ${itemsVenta[index].nombre}. Reintenta la venta para definir el ajuste.`);
+            }
+            nuevoStock = ajusteGuardado;
+          }
+
+          if (nuevoStock < 0) throw new Error(`El inventario de ${itemsVenta[index].nombre} no puede quedar negativo.`);
+
           transaction.update(artDoc.ref, { stock: nuevoStock });
         });
       });
@@ -309,6 +430,8 @@ function PaginaVentas() {
     setTotalVenta(0);
     setProveedorSeleccionadoId('');
     setVentaReciente(null);
+    setRemisionEnUso(null);
+    setRemisionSeleccionadaId('');
   };
     
 
@@ -323,7 +446,43 @@ function PaginaVentas() {
       <div style={{textAlign: 'center', fontSize: '18px', marginBottom: '10px'}}>
         Base actual: <strong>${base.toLocaleString('es-CO')}</strong>
       </div>
-      
+
+      <div className="remision-selector">
+        <div className="remision-selector__control">
+          <label htmlFor="remision-select">Usar remisión existente:</label>
+          <select
+            id="remision-select"
+            value={remisionSeleccionadaId}
+            onChange={(e) => setRemisionSeleccionadaId(e.target.value)}
+            disabled={ventaReciente}
+          >
+            <option value="">-- Seleccione una remisión --</option>
+            {remisiones.map((remision) => (
+              <option key={remision.id} value={remision.id}>
+                {remision.consecutivo} - {remision.destino?.nombre || 'Sin destino'}
+                {remision.fecha?.toDate?.() ? ` (${remision.fecha.toDate().toLocaleDateString('es-CO')})` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="remision-selector__acciones">
+          <button type="button" onClick={handleCargarRemision} disabled={ventaReciente}>
+            Cargar remisión
+          </button>
+          <button
+            type="button"
+            className="btn-limpiar-remision"
+            onClick={handleLimpiarRemision}
+            disabled={ventaReciente || !remisionEnUso}
+          >
+            Liberar remisión
+          </button>
+        </div>
+        {remisionEnUso && (
+          <p className="remision-activa">Usando remisión: {remisionEnUso.consecutivo}</p>
+        )}
+      </div>
+
       <div className="layout-ventas">
         
         {/* --- FORMULARIO --- */}
@@ -490,3 +649,4 @@ function PaginaVentas() {
 
 
 export default PaginaVentas;
+
