@@ -7,6 +7,7 @@ import autoTable from 'jspdf-autotable';
 import { collection, doc, getDocs, runTransaction, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useCaja } from '../context/CajaContext';
+import assetPath from '../utils/assetPath';
 
 const formatConsecutivo = (numero) => `REM-${String(numero).padStart(6, '0')}`;
 
@@ -211,7 +212,7 @@ function PaginaRemisiones() {
     }
 
     try {
-      firmaGeneradorImg = await cargarImagenComoBase64(encodeURI('/icons/Firma.jpg'));
+      firmaGeneradorImg = await cargarImagenComoBase64(assetPath('icons/Firma.jpg'));
     } catch (error) {
       console.warn('No se pudo cargar la firma para el PDF:', error);
     }
