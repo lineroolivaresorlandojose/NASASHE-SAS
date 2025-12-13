@@ -3,6 +3,12 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // El sitio se publica en GitHub Pages bajo el subdirectorio
+  // "/NASASHE-SAS/". Configurar la propiedad `base` asegura que
+  // los assets generados por Vite se sirvan desde la ruta correcta
+  // en producción en lugar de intentar cargarlos desde "/assets",
+  // lo que provocaba los errores 404 vistos en GitHub Pages.
+  base: '/NASASHE-SAS/',
   plugins: [react()],
   // Permite que Vite resuelva los paquetes que exponen la condición "tauri",
   // necesaria para los plugins oficiales de Tauri cuando la app corre en el
