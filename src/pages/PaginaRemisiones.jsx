@@ -151,8 +151,11 @@ function PaginaRemisiones() {
     }
 
     if (cantidad > (articulo.stock || 0)) {
-      alert(`La cantidad supera el stock disponible (${articulo.stock || 0}).`);
-      return;
+      const continuar = window.confirm(
+        `La cantidad supera el stock disponible (${articulo.stock || 0}). `
+        + '¿Deseas agregarla de todos modos? El inventario se ajustará al facturar la venta.'
+      );
+      if (!continuar) return;
     }
 
     setItems((prev) => ([
@@ -198,12 +201,19 @@ function PaginaRemisiones() {
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 12;
     let cursorY = margin;
+    let firmaGeneradorImg = null;
 
     try {
       const logoData = await cargarImagenComoBase64(encodeURI('/logo con fondo.png'));
       doc.addImage(logoData, 'PNG', margin, cursorY, 40, 20);
     } catch (error) {
       console.warn('No se pudo cargar el logo para el PDF:', error);
+    }
+
+    try {
+      firmaGeneradorImg = await cargarImagenComoBase64(encodeURI('/icons/Firma.jpg'));
+    } catch (error) {
+      console.warn('No se pudo cargar la firma para el PDF:', error);
     }
 
     doc.setFontSize(16);
@@ -265,11 +275,16 @@ function PaginaRemisiones() {
       margin: { left: margin, right: margin }
     });
 
-    const finalY = doc.lastAutoTable.finalY + 10;
+    const finalY = doc.lastAutoTable.finalY + 20;
     doc.line(margin, finalY, pageWidth - margin, finalY);
-    doc.text('Firma y sello quien diligencia', margin + 10, finalY + 8);
-    doc.text('Firma Conductor', pageWidth / 2 - 10, finalY + 8);
-    doc.text('Firma cliente y/or Recibidor', pageWidth - margin - 50, finalY + 8);
+
+    if (firmaGeneradorImg) {
+      doc.addImage(firmaGeneradorImg, 'JPEG', margin + 2, finalY - 18, 45, 16);
+    }
+
+    doc.text('Firma y sello quien diligencia', margin + 10, finalY + 10);
+    doc.text('Firma Conductor', pageWidth / 2 - 10, finalY + 10);
+    doc.text('Firma cliente y/or Recibidor', pageWidth - margin - 50, finalY + 10);
 
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i += 1) {
@@ -301,25 +316,8 @@ function PaginaRemisiones() {
         const consecSnap = await transaction.get(consecRef);
         if (!consecSnap.exists()) throw new Error('No se encontró la configuración de consecutivos.');
 
-        const articulosRefs = items.map((item) => doc(db, 'articulos', item.articuloId));
-        const articulosDocs = await Promise.all(articulosRefs.map((ref) => transaction.get(ref)));
-
         const ultimoNum = (consecSnap.data().remisiones ?? 0) + 1;
         const consecutivoStr = formatConsecutivo(ultimoNum);
-
-        const itemsConStock = items.map((item, index) => {
-          const articuloDoc = articulosDocs[index];
-          if (!articuloDoc.exists()) {
-            throw new Error(`No se encontró el artículo ${item.nombre} en inventario.`);
-          }
-          const stockActual = articuloDoc.data().stock || 0;
-          if (item.cantidad > stockActual) {
-            throw new Error(`El material ${item.nombre} no tiene stock suficiente.`);
-          }
-          const nuevoStock = stockActual - item.cantidad;
-          transaction.update(articulosRefs[index], { stock: nuevoStock });
-          return item;
-        });
 
         const remisionData = {
           consecutivo: consecutivoStr,
@@ -331,7 +329,7 @@ function PaginaRemisiones() {
             telefono: destinoSeleccionado.telefono || ''
           },
           conductor: datosConductor,
-          items: itemsConStock,
+          items,
           observaciones,
           fecha: Timestamp.now(),
           creadoPor: userProfile?.nombre || 'SISTEMA'
